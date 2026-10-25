@@ -5,6 +5,7 @@
 #include <QDirIterator>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <QSettings>
 
 namespace LCA::Java {
 

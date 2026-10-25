@@ -27,6 +27,16 @@ elseif(WIN32)
     endif()
 endif()
 
+# Fix macOS 14+ / Xcode 15+ removal of deprecated AGL framework
+if(APPLE)
+    if(NOT TARGET WrapOpenGL::WrapOpenGL)
+        add_library(WrapOpenGL::WrapOpenGL INTERFACE IMPORTED)
+        set_target_properties(WrapOpenGL::WrapOpenGL PROPERTIES
+            INTERFACE_LINK_LIBRARIES "-framework OpenGL"
+        )
+    endif()
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS 
     Core 
     Gui 
@@ -126,6 +136,13 @@ target_link_libraries(LCALauncher PRIVATE
 # OS-Specific Target Properties
 # -----------------------------------------------------------------------------
 if(APPLE)
+    # Strip deprecated -framework AGL if injected transitively
+    get_target_property(_target_libs LCALauncher LINK_LIBRARIES)
+    if(_target_libs)
+        list(REMOVE_ITEM _target_libs "-framework AGL")
+        set_target_properties(LCALauncher PROPERTIES LINK_LIBRARIES "${_target_libs}")
+    endif()
+
     set_target_properties(LCALauncher PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME "LCALauncher"
