@@ -1,0 +1,132 @@
+name: Build LCALauncher Matrix
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            arch: win64_msvc2022_64
+            qt_modules: "qtdeclarative"
+            cmake_generator: "Visual Studio 17 2022"
+            artifact_name: LCALauncher-Windows
+
+          - os: macos-latest
+            platform: macos
+            arch: clang_64
+            qt_modules: "qtdeclarative"
+            cmake_generator: "Ninja"
+            artifact_name: LCALauncher-macOS
+
+          - os: ubuntu-22.04
+            platform: linux
+            arch: gcc_64
+            qt_modules: "qtdeclarative"
+            cmake_generator: "Ninja"
+            artifact_name: LCALauncher-Linux
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Ninja (Linux & macOS)
+        if: matrix.platform != 'windows'
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev libvulkan-dev
+          else
+            brew install ninja
+          fi
+
+      - name: Setup Qt 6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          host: ${{ matrix.platform }}
+          target: 'desktop'
+          arch: ${{ matrix.arch }}
+          modules: ${{ matrix.qt_modules }}
+          cache: true
+
+      # -------------------------------------------------------------
+      # Windows Build
+      # -------------------------------------------------------------
+      - name: Configure CMake (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          cmake -B build -G "${{ matrix.cmake_generator }}" -A x64 -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Package with windeployqt (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          mkdir dist
+          copy build\Release\LCALauncher.exe dist\
+          windeployqt --qmldir qml dist\LCALauncher.exe
+
+      # -------------------------------------------------------------
+      # macOS Build
+      # -------------------------------------------------------------
+      - name: Configure CMake (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Package with macdeployqt (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          macdeployqt build/LCALauncher.app -qmldir=qml -dmg
+          mkdir dist
+          mv build/*.dmg dist/ || cp -r build/LCALauncher.app dist/
+
+      # -------------------------------------------------------------
+      # Linux Build
+      # -------------------------------------------------------------
+      - name: Configure CMake (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Package (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          mkdir dist
+          cp build/lcalauncher dist/
+          cp -r qml dist/
+
+      # -------------------------------------------------------------
+      # Upload Artifacts
+      # -------------------------------------------------------------
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=LCA Launcher
+Comment=Minecraft 1.21.1 NeoForge Custom Launcher
+Exec=lcalauncher
+Icon=lcalauncher
+Terminal=false
+Categories=Game;ActionGame;
+Keywords=minecraft;game;launcher;neoforge;
+StartupNotify=true
+StartupWMClass=LCALauncher
