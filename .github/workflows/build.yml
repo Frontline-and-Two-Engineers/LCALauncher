@@ -20,37 +20,41 @@ jobs:
           - os: windows-latest
             platform: windows
             arch: win64_msvc2022_64
-            qt_modules: "qtdeclarative"
             cmake_generator: "Visual Studio 17 2022"
             artifact_name: LCALauncher-Windows
 
           - os: macos-latest
             platform: macos
             arch: clang_64
-            qt_modules: "qtdeclarative"
             cmake_generator: "Ninja"
             artifact_name: LCALauncher-macOS
 
           - os: ubuntu-22.04
             platform: linux
             arch: gcc_64
-            qt_modules: "qtdeclarative"
             cmake_generator: "Ninja"
             artifact_name: LCALauncher-Linux
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Ninja (Linux & macOS)
-        if: matrix.platform != 'windows'
+      # -------------------------------------------------------------
+      # OS System Dependencies
+      # -------------------------------------------------------------
+      - name: Install Linux Dependencies
+        if: matrix.platform == 'linux'
         run: |
-          if [ "${{ matrix.platform }}" = "linux" ]; then
-            sudo apt-get update
-            sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev libvulkan-dev
-          else
-            brew install ninja
-          fi
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ninja-build \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev \
+            libfontconfig1-dev \
+            libvulkan-dev
 
       - name: Setup Qt 6
         uses: jurplel/install-qt-action@v4
@@ -59,11 +63,10 @@ jobs:
           host: ${{ matrix.platform }}
           target: 'desktop'
           arch: ${{ matrix.arch }}
-          modules: ${{ matrix.qt_modules }}
           cache: true
 
       # -------------------------------------------------------------
-      # Windows Build
+      # Windows Build & Package
       # -------------------------------------------------------------
       - name: Configure CMake (Windows)
         if: matrix.platform == 'windows'
@@ -77,13 +80,16 @@ jobs:
 
       - name: Package with windeployqt (Windows)
         if: matrix.platform == 'windows'
+        shell: pwsh
         run: |
-          mkdir dist
-          copy build\Release\LCALauncher.exe dist\
-          windeployqt --qmldir qml dist\LCALauncher.exe
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item build\Release\LCALauncher.exe -Destination dist\
+          # windeployqt is in Qt's bin directory
+          $windeployqt = Join-Path $env:Qt6_DIR "bin\windeployqt.exe"
+          & $windeployqt --qmldir qml dist\LCALauncher.exe
 
       # -------------------------------------------------------------
-      # macOS Build
+      # macOS Build & Package
       # -------------------------------------------------------------
       - name: Configure CMake (macOS)
         if: matrix.platform == 'macos'
@@ -98,12 +104,17 @@ jobs:
       - name: Package with macdeployqt (macOS)
         if: matrix.platform == 'macos'
         run: |
-          macdeployqt build/LCALauncher.app -qmldir=qml -dmg
-          mkdir dist
-          mv build/*.dmg dist/ || cp -r build/LCALauncher.app dist/
+          mkdir -p dist
+          # Use macdeployqt from installed Qt
+          "$Qt6_DIR/bin/macdeployqt" build/LCALauncher.app -qmldir=qml -dmg
+          if ls build/*.dmg 1> /dev/null 2>&1; then
+            mv build/*.dmg dist/
+          else
+            cp -r build/LCALauncher.app dist/
+          fi
 
       # -------------------------------------------------------------
-      # Linux Build
+      # Linux Build & Package
       # -------------------------------------------------------------
       - name: Configure CMake (Linux)
         if: matrix.platform == 'linux'
@@ -118,7 +129,7 @@ jobs:
       - name: Package (Linux)
         if: matrix.platform == 'linux'
         run: |
-          mkdir dist
+          mkdir -p dist
           cp build/lcalauncher dist/
           cp -r qml dist/
 
