@@ -1,13 +1,40 @@
 #include "SettingsBridge.h"
 #include "core/utils/FileUtils.h"
 #include "core/java/JavaDetector.h"
+#include "core/java/JavaDownloader.h"
 
 namespace LCA::Bridge {
 
 SettingsBridge::SettingsBridge(QObject* parent)
     : QObject(parent)
     , m_settings("LCAProject", "LCALauncher")
+    , m_javaDownloader(new Java::JavaDownloader(this))
 {
+    connect(m_javaDownloader, &Java::JavaDownloader::progressChanged, this, [this](double percent, qint64, qint64) {
+        m_javaDownloadProgress = percent;
+        emit javaDownloadingChanged();
+    });
+
+    connect(m_javaDownloader, &Java::JavaDownloader::statusChanged, this, [this](const QString& status) {
+        m_detectedJavaInfo = status;
+        emit javaInfoChanged();
+    });
+
+    connect(m_javaDownloader, &Java::JavaDownloader::downloadFinished, this, [this](bool success, const QString& path, const QString& err) {
+        m_isDownloadingJava = false;
+        m_javaDownloadProgress = 0.0;
+        emit javaDownloadingChanged();
+
+        if (success) {
+            setJavaPath(path);
+            emit javaDownloadFinished(true, "Java 21 успешно установлена!");
+        } else {
+            m_detectedJavaInfo = "Ошибка установки Java: " + err;
+            emit javaInfoChanged();
+            emit javaDownloadFinished(false, err);
+        }
+    });
+
     m_gameDir = Utils::FileUtils::defaultGameDir();
     load();
     if (m_javaPath.isEmpty()) {
@@ -97,6 +124,22 @@ void SettingsBridge::setGameDir(const QString& dir) {
 
 QString SettingsBridge::detectedJavaInfo() const {
     return m_detectedJavaInfo;
+}
+
+bool SettingsBridge::isDownloadingJava() const {
+    return m_isDownloadingJava;
+}
+
+double SettingsBridge::javaDownloadProgress() const {
+    return m_javaDownloadProgress;
+}
+
+void SettingsBridge::downloadJava21() {
+    if (m_isDownloadingJava) return;
+    m_isDownloadingJava = true;
+    m_javaDownloadProgress = 0.0;
+    emit javaDownloadingChanged();
+    m_javaDownloader->startDownload();
 }
 
 void SettingsBridge::autoDetectJava() {

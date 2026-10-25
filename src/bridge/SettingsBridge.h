@@ -3,6 +3,10 @@
 #include <QObject>
 #include <QSettings>
 
+namespace LCA::Java {
+class JavaDownloader;
+}
+
 namespace LCA::Bridge {
 
 class SettingsBridge : public QObject {
@@ -17,6 +21,8 @@ class SettingsBridge : public QObject {
     Q_PROPERTY(QString modpackUrl READ modpackUrl WRITE setModpackUrl NOTIFY settingsChanged)
     Q_PROPERTY(QString gameDir READ gameDir WRITE setGameDir NOTIFY settingsChanged)
     Q_PROPERTY(QString detectedJavaInfo READ detectedJavaInfo NOTIFY javaInfoChanged)
+    Q_PROPERTY(bool isDownloadingJava READ isDownloadingJava NOTIFY javaDownloadingChanged)
+    Q_PROPERTY(double javaDownloadProgress READ javaDownloadProgress NOTIFY javaDownloadingChanged)
 
 public:
     explicit SettingsBridge(QObject* parent = nullptr);
@@ -46,13 +52,18 @@ public:
     void setGameDir(const QString& dir);
 
     QString detectedJavaInfo() const;
+    bool isDownloadingJava() const;
+    double javaDownloadProgress() const;
 
     Q_INVOKABLE void autoDetectJava();
+    Q_INVOKABLE void downloadJava21();
     Q_INVOKABLE void resetToDefaults();
 
 signals:
     void settingsChanged();
     void javaInfoChanged();
+    void javaDownloadingChanged();
+    void javaDownloadFinished(bool success, const QString& message);
 
 private:
     void load();
@@ -68,6 +79,9 @@ private:
     QString m_modpackUrl{"https://myserver.com/api/modpack/manifest.json"};
     QString m_gameDir;
     QString m_detectedJavaInfo;
+    Java::JavaDownloader* m_javaDownloader{nullptr};
+    bool m_isDownloadingJava{false};
+    double m_javaDownloadProgress{0.0};
 };
 
 } // namespace LCA::Bridge

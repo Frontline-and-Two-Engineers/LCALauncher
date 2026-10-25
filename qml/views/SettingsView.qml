@@ -102,16 +102,30 @@ Item {
                             }
 
                             LCAButton {
+                                Layout.preferredWidth: 150
+                                Layout.preferredHeight: 44
+                                text: "Автопоиск"
+                                enabled: !settingsBridge.isDownloadingJava
+                                onClicked: settingsBridge.autoDetectJava()
+                            }
+
+                            LCAButton {
                                 Layout.preferredWidth: 160
                                 Layout.preferredHeight: 44
-                                text: "Автоопределение"
-                                onClicked: settingsBridge.autoDetectJava()
+                                isPrimary: true
+                                accentColor: "#00E5FF"
+                                textColor: "#0D1117"
+                                text: settingsBridge.isDownloadingJava ? 
+                                      ("Загрузка " + Math.round(settingsBridge.javaDownloadProgress * 100) + "%") : 
+                                      "Скачать Java 21"
+                                enabled: !settingsBridge.isDownloadingJava
+                                onClicked: settingsBridge.downloadJava21()
                             }
                         }
 
                         Text {
                             text: settingsBridge.detectedJavaInfo
-                            color: "#7E879E"
+                            color: settingsBridge.isDownloadingJava ? "#00E5FF" : "#7E879E"
                             font.pixelSize: 12
                         }
                     }

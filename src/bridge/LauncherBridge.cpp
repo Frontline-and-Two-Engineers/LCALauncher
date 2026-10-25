@@ -1,6 +1,7 @@
 #include "LauncherBridge.h"
 #include "core/utils/FileUtils.h"
 #include "core/java/JavaDetector.h"
+#include "core/java/JavaDownloader.h"
 #include <QDir>
 #include <QDirIterator>
 
@@ -103,9 +104,47 @@ void LauncherBridge::launchGame() {
     }
 
     if (!javaInfo.isValid) {
-        m_statusText = "Ошибка: не найдена Java 21!";
+        m_isBusy = true;
+        m_progressPercent = 0.0;
+        emit busyChanged();
+        emit progressChanged();
+
+        m_statusText = "Java 21 не найдена. Начинается автозагрузка Adoptium Temurin 21...";
         emit statusChanged();
-        appendLog("[Ошибка] Для Minecraft 1.21.1 требуется Java 21. Укажите путь в настройках.");
+        appendLog("[Java] Java 21 не найдена. Автоматическое скачивание Eclipse Temurin JRE 21...");
+
+        auto javaDownloader = new Java::JavaDownloader(this);
+        connect(javaDownloader, &Java::JavaDownloader::progressChanged, this, [this](double percent, qint64, qint64) {
+            m_progressPercent = percent;
+            emit progressChanged();
+        });
+        connect(javaDownloader, &Java::JavaDownloader::statusChanged, this, [this](const QString& status) {
+            m_statusText = status;
+            emit statusChanged();
+            appendLog("[Java] " + status);
+        });
+        connect(javaDownloader, &Java::JavaDownloader::downloadFinished, this, [this, javaDownloader](bool success, const QString& path, const QString& err) {
+            javaDownloader->deleteLater();
+            if (!success) {
+                m_isBusy = false;
+                m_statusText = "Ошибка загрузки Java 21: " + err;
+                emit busyChanged();
+                emit statusChanged();
+                appendLog("[Java ОШИБКА] " + err);
+                return;
+            }
+
+            m_settings->setJavaPath(path);
+            appendLog("[Java] Успешно установлена Java 21: " + path);
+
+            // Continue launch sequence!
+            m_progressPercent = 0.0;
+            emit progressChanged();
+            m_syncEngine->setManifestUrl(m_settings->modpackUrl());
+            m_syncEngine->startSync();
+        });
+
+        javaDownloader->startDownload();
         return;
     }
 

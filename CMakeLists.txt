@@ -79,6 +79,8 @@ qt_add_executable(LCALauncher
     # Core - Java
     src/core/java/JavaDetector.h
     src/core/java/JavaDetector.cpp
+    src/core/java/JavaDownloader.h
+    src/core/java/JavaDownloader.cpp
 
     # Core - Downloader
     src/core/downloader/DownloadTask.h
