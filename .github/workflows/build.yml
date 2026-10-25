@@ -20,19 +20,16 @@ jobs:
           - os: windows-latest
             platform: windows
             arch: win64_msvc2022_64
-            cmake_generator: "Visual Studio 17 2022"
             artifact_name: LCALauncher-Windows
 
           - os: macos-latest
             platform: macos
             arch: clang_64
-            cmake_generator: "Ninja"
             artifact_name: LCALauncher-macOS
 
           - os: ubuntu-22.04
             platform: linux
-            arch: gcc_64
-            cmake_generator: "Ninja"
+            arch: linux_gcc_64
             artifact_name: LCALauncher-Linux
 
     steps:
@@ -40,8 +37,12 @@ jobs:
         uses: actions/checkout@v4
 
       # -------------------------------------------------------------
-      # OS System Dependencies
+      # Setup Compilers & System Tools
       # -------------------------------------------------------------
+      - name: Setup MSVC (Windows)
+        if: matrix.platform == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Linux Dependencies
         if: matrix.platform == 'linux'
         run: |
@@ -56,56 +57,47 @@ jobs:
             libfontconfig1-dev \
             libvulkan-dev
 
+      # -------------------------------------------------------------
+      # Setup Qt 6.8
+      # -------------------------------------------------------------
       - name: Setup Qt 6
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.0'
-          host: ${{ matrix.platform }}
           target: 'desktop'
           arch: ${{ matrix.arch }}
           cache: true
 
       # -------------------------------------------------------------
-      # Windows Build & Package
+      # Build with CMake & Ninja (Unified across all 3 platforms)
       # -------------------------------------------------------------
-      - name: Configure CMake (Windows)
-        if: matrix.platform == 'windows'
+      - name: Configure CMake
         run: |
-          cmake -B build -G "${{ matrix.cmake_generator }}" -A x64 -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build (Windows)
-        if: matrix.platform == 'windows'
+      - name: Compile Application
         run: |
           cmake --build build --config Release --parallel
 
-      - name: Package with windeployqt (Windows)
+      # -------------------------------------------------------------
+      # Windows Packaging
+      # -------------------------------------------------------------
+      - name: Package (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item build\Release\LCALauncher.exe -Destination dist\
-          # windeployqt is in Qt's bin directory
+          Copy-Item build\LCALauncher.exe -Destination dist\
           $windeployqt = Join-Path $env:Qt6_DIR "bin\windeployqt.exe"
           & $windeployqt --qmldir qml dist\LCALauncher.exe
 
       # -------------------------------------------------------------
-      # macOS Build & Package
+      # macOS Packaging
       # -------------------------------------------------------------
-      - name: Configure CMake (macOS)
-        if: matrix.platform == 'macos'
-        run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build (macOS)
-        if: matrix.platform == 'macos'
-        run: |
-          cmake --build build --config Release --parallel
-
-      - name: Package with macdeployqt (macOS)
+      - name: Package (macOS)
         if: matrix.platform == 'macos'
         run: |
           mkdir -p dist
-          # Use macdeployqt from installed Qt
           "$Qt6_DIR/bin/macdeployqt" build/LCALauncher.app -qmldir=qml -dmg
           if ls build/*.dmg 1> /dev/null 2>&1; then
             mv build/*.dmg dist/
@@ -114,18 +106,8 @@ jobs:
           fi
 
       # -------------------------------------------------------------
-      # Linux Build & Package
+      # Linux Packaging
       # -------------------------------------------------------------
-      - name: Configure CMake (Linux)
-        if: matrix.platform == 'linux'
-        run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build (Linux)
-        if: matrix.platform == 'linux'
-        run: |
-          cmake --build build --config Release --parallel
-
       - name: Package (Linux)
         if: matrix.platform == 'linux'
         run: |
