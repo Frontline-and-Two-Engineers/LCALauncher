@@ -88,7 +88,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist
           Copy-Item build\LCALauncher.exe -Destination dist\
-          $windeployqt = Join-Path $env:Qt6_DIR "bin\windeployqt.exe"
+          $windeployqt = Join-Path $env:QT_ROOT_DIR "bin\windeployqt.exe"
           & $windeployqt --qmldir qml dist\LCALauncher.exe
 
       # -------------------------------------------------------------
@@ -98,12 +98,13 @@ jobs:
         if: matrix.platform == 'macos'
         run: |
           mkdir -p dist
-          "$Qt6_DIR/bin/macdeployqt" build/LCALauncher.app -qmldir=qml -dmg
+          "$QT_ROOT_DIR/bin/macdeployqt" build/LCALauncher.app -qmldir=qml -dmg
           if ls build/*.dmg 1> /dev/null 2>&1; then
             mv build/*.dmg dist/
           else
             cp -r build/LCALauncher.app dist/
           fi
+
 
       # -------------------------------------------------------------
       # Linux Packaging
