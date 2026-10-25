@@ -92,18 +92,22 @@ jobs:
           & $windeployqt --qmldir qml dist\LCALauncher.exe
 
       # -------------------------------------------------------------
-      # macOS Packaging
+      # macOS Packaging & Ad-hoc Signing
       # -------------------------------------------------------------
       - name: Package (macOS)
         if: matrix.platform == 'macos'
         run: |
           mkdir -p dist
-          "$QT_ROOT_DIR/bin/macdeployqt" build/LCALauncher.app -qmldir=qml -dmg
-          if ls build/*.dmg 1> /dev/null 2>&1; then
-            mv build/*.dmg dist/
-          else
-            cp -r build/LCALauncher.app dist/
-          fi
+          # 1. Deploy Qt frameworks, plugins, and QML into the app bundle
+          "$QT_ROOT_DIR/bin/macdeployqt" build/LCALauncher.app -qmldir=qml
+
+          # 2. Ad-hoc codesign all embedded frameworks, plugins, and the main bundle
+          find build/LCALauncher.app/Contents/Frameworks -type f -name "*.dylib" -exec codesign --force --sign - {} + 2>/dev/null || true
+          find build/LCALauncher.app/Contents/PlugIns -type f -name "*.dylib" -exec codesign --force --sign - {} + 2>/dev/null || true
+          codesign --force --deep --sign - build/LCALauncher.app
+
+          # 3. Create DMG using native hdiutil
+          hdiutil create -volname "LCALauncher" -srcfolder build/LCALauncher.app -ov -format UDZO dist/LCALauncher.dmg
 
 
       # -------------------------------------------------------------
