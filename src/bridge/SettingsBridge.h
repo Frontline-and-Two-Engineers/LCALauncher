@@ -24,6 +24,7 @@ class SettingsBridge : public QObject {
     Q_PROPERTY(QString authUrl READ authUrl WRITE setAuthUrl NOTIFY settingsChanged)
     Q_PROPERTY(QString telegramBotUsername READ telegramBotUsername WRITE setTelegramBotUsername NOTIFY settingsChanged)
     Q_PROPERTY(QString modpackUrl READ modpackUrl WRITE setModpackUrl NOTIFY settingsChanged)
+    Q_PROPERTY(QString clientBaseUrl READ clientBaseUrl WRITE setClientBaseUrl NOTIFY settingsChanged)
     Q_PROPERTY(QString gameDir READ gameDir WRITE setGameDir NOTIFY settingsChanged)
     Q_PROPERTY(QString detectedJavaInfo READ detectedJavaInfo NOTIFY javaInfoChanged)
     Q_PROPERTY(bool isDownloadingJava READ isDownloadingJava NOTIFY javaDownloadingChanged)
@@ -56,6 +57,9 @@ public:
     QString modpackUrl() const;
     void setModpackUrl(const QString& url);
 
+    QString clientBaseUrl() const;
+    void setClientBaseUrl(const QString& url);
+
     QString gameDir() const;
     void setGameDir(const QString& dir);
 
@@ -87,6 +91,7 @@ private:
     QString m_authUrl{"http://localhost:8080"};
     QString m_telegramBotUsername{"@LCAMinecraftBot"};
     QString m_modpackUrl{"http://localhost:8080/api/modpack/manifest.json"};
+    QString m_clientBaseUrl{"http://localhost:8080/api/modpack/files/client-base.zip"};
     QString m_gameDir;
     QString m_detectedJavaInfo;
     Java::JavaDownloader* m_javaDownloader{nullptr};

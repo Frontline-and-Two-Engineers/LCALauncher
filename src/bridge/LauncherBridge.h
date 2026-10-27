@@ -47,6 +47,9 @@ private slots:
 
 private:
     void appendLog(const QString& line);
+    void checkJavaAndProceed();
+    void checkClientAndProceed();
+    void startModpackSync();
     void doActualGameLaunch();
 
     Auth::AuthService* m_authService;

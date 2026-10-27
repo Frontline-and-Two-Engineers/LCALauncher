@@ -71,6 +71,12 @@ qt_add_executable(LCALauncher
     src/core/utils/HashUtils.h
     src/core/utils/HashUtils.cpp
     src/core/utils/UrlUtils.h
+    src/core/utils/ArchiveUtils.h
+    src/core/utils/ArchiveUtils.cpp
+
+    # Core - Client
+    src/core/client/ClientDownloader.h
+    src/core/client/ClientDownloader.cpp
 
     # Core - Auth
     src/core/auth/UserSession.h

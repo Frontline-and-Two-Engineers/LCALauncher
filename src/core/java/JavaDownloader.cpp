@@ -1,6 +1,7 @@
 #include "JavaDownloader.h"
 #include "JavaDetector.h"
 #include "core/utils/FileUtils.h"
+#include "core/utils/ArchiveUtils.h"
 #include <QNetworkRequest>
 #include <QUrl>
 #include <QDir>
@@ -191,33 +192,10 @@ void JavaDownloader::onReplyFinished() {
 }
 
 bool JavaDownloader::extractArchive(const QString& archivePath, const QString& destinationDir) {
-    QProcess process;
-
 #if defined(Q_OS_WIN)
-    // Try built-in tar on Windows 10/11 first
-    QString tarPath = QStandardPaths::findExecutable("tar.exe");
-    if (!tarPath.isEmpty()) {
-        process.start(tarPath, {"-xf", archivePath, "-C", destinationDir});
-        if (process.waitForFinished(60000) && process.exitCode() == 0) {
-            return true;
-        }
-    }
-
-    // Fallback: PowerShell Expand-Archive
-    QString powershell = QStandardPaths::findExecutable("powershell.exe");
-    if (!powershell.isEmpty()) {
-        QString cmd = QString("Expand-Archive -Force -Path '%1' -DestinationPath '%2'")
-                          .arg(archivePath, destinationDir);
-        process.start(powershell, {"-NoProfile", "-NonInteractive", "-Command", cmd});
-        if (process.waitForFinished(90000) && process.exitCode() == 0) {
-            return true;
-        }
-    }
-    return false;
+    return Utils::ArchiveUtils::extractZip(archivePath, destinationDir);
 #else
-    // macOS and Linux tar
-    process.start("tar", {"-xzf", archivePath, "-C", destinationDir});
-    return process.waitForFinished(60000) && process.exitCode() == 0;
+    return Utils::ArchiveUtils::extractTarGz(archivePath, destinationDir);
 #endif
 }
 

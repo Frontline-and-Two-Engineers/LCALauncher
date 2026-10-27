@@ -2,8 +2,11 @@
 #include "core/utils/FileUtils.h"
 #include "core/java/JavaDetector.h"
 #include "core/java/JavaDownloader.h"
+#include "core/client/ClientDownloader.h"
 #include <QDir>
 #include <QDirIterator>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 namespace LCA::Bridge {
 
@@ -93,22 +96,28 @@ void LauncherBridge::launchGame() {
         return;
     }
 
+    m_isBusy = true;
+    m_progressPercent = 0.0;
+    emit busyChanged();
+    emit progressChanged();
+
+    appendLog(QString("[Launcher] Подготовка к запуску. Игрок: %1 (%2)")
+                  .arg(m_authService->currentSession().username, m_authService->currentSession().userType));
+
     // 2. Validate Java 21
+    checkJavaAndProceed();
+}
+
+void LauncherBridge::checkJavaAndProceed() {
     QString java = m_settings->javaPath();
     auto javaInfo = Java::JavaDetector::inspectJava(java);
     if (!javaInfo.isValid) {
-        // Try auto detect
         m_settings->autoDetectJava();
         java = m_settings->javaPath();
         javaInfo = Java::JavaDetector::inspectJava(java);
     }
 
     if (!javaInfo.isValid) {
-        m_isBusy = true;
-        m_progressPercent = 0.0;
-        emit busyChanged();
-        emit progressChanged();
-
         m_statusText = "Java 21 не найдена. Начинается автозагрузка Adoptium Temurin 21...";
         emit statusChanged();
         appendLog("[Java] Java 21 не найдена. Автоматическое скачивание Eclipse Temurin JRE 21...");
@@ -137,27 +146,68 @@ void LauncherBridge::launchGame() {
             m_settings->setJavaPath(path);
             appendLog("[Java] Успешно установлена Java 21: " + path);
 
-            // Continue launch sequence!
-            m_progressPercent = 0.0;
-            emit progressChanged();
-            m_syncEngine->setManifestUrl(m_settings->modpackUrl());
-            m_syncEngine->startSync();
+            // Proceed to Step 3: Check base client
+            checkClientAndProceed();
         });
 
         javaDownloader->startDownload();
         return;
     }
 
-    m_isBusy = true;
+    appendLog(QString("[Launcher] Используется Java 21: %1").arg(javaInfo.path));
+    checkClientAndProceed();
+}
+
+void LauncherBridge::checkClientAndProceed() {
+    QString dataDir = Utils::FileUtils::defaultLauncherDataDir();
+
+    if (!Client::ClientDownloader::isClientInstalled(dataDir)) {
+        m_progressPercent = 0.0;
+        emit progressChanged();
+        m_statusText = "Клиент 1.21.1 NeoForge не найден. Загрузка базового клиента...";
+        emit statusChanged();
+        appendLog("[Клиент] Базовый клиент 1.21.1 NeoForge не обнаружен. Начинается загрузка client-base.zip...");
+
+        auto clientDownloader = new Client::ClientDownloader(this);
+        connect(clientDownloader, &Client::ClientDownloader::progressChanged, this, [this](double percent, qint64, qint64) {
+            m_progressPercent = percent;
+            emit progressChanged();
+        });
+        connect(clientDownloader, &Client::ClientDownloader::statusChanged, this, [this](const QString& status) {
+            m_statusText = status;
+            emit statusChanged();
+            appendLog("[Клиент] " + status);
+        });
+        connect(clientDownloader, &Client::ClientDownloader::downloadFinished, this, [this, clientDownloader](bool success, const QString& err) {
+            clientDownloader->deleteLater();
+            if (!success) {
+                m_isBusy = false;
+                m_statusText = "Ошибка установки базового клиента: " + err;
+                emit busyChanged();
+                emit statusChanged();
+                appendLog("[Клиент ОШИБКА] " + err);
+                return;
+            }
+
+            appendLog("[Клиент] Базовый клиент 1.21.1 NeoForge успешно распакован и готов!");
+            startModpackSync();
+        });
+
+        clientDownloader->startDownload(m_settings->clientBaseUrl(), dataDir);
+        return;
+    }
+
+    appendLog("[Клиент] Базовый клиент 1.21.1 NeoForge проверен и готов.");
+    startModpackSync();
+}
+
+void LauncherBridge::startModpackSync() {
     m_progressPercent = 0.0;
-    emit busyChanged();
     emit progressChanged();
+    m_statusText = "Синхронизация модов и конфигов сервера...";
+    emit statusChanged();
+    appendLog(QString("[Синхронизация] Подключение к манифесту сборки: %1").arg(m_settings->modpackUrl()));
 
-    appendLog(QString("[Launcher] Подготовка к запуску. Игрок: %1 (%2)")
-                  .arg(m_authService->currentSession().username, m_authService->currentSession().userType));
-    appendLog(QString("[Launcher] Используется Java: %1").arg(javaInfo.path));
-
-    // 3. Start Sync with server
     m_syncEngine->setManifestUrl(m_settings->modpackUrl());
     m_syncEngine->startSync();
 }
@@ -197,17 +247,52 @@ void LauncherBridge::doActualGameLaunch() {
     config.authlibInjectorPath = Utils::FileUtils::defaultLauncherDataDir() + "/authlib-injector.jar";
     config.authServerYggdrasilUrl = m_settings->authUrl();
 
-    // Gather classpath: all libraries in libraries/ + client.jar
+    // Default NeoForge main class
+    config.mainClass = "cpw.mods.bootstraplauncher.BootstrapLauncher";
+
+    // Read version JSON if present to get exact mainClass and assetIndex
+    QString versionJson = Utils::FileUtils::defaultLauncherDataDir() + "/versions/1.21.1-neoforge/1.21.1-neoforge.json";
+    if (QFile::exists(versionJson)) {
+        QFile file(versionJson);
+        if (file.open(QIODevice::ReadOnly)) {
+            QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+            if (doc.isObject()) {
+                QJsonObject obj = doc.object();
+                if (obj.contains("mainClass")) {
+                    config.mainClass = obj["mainClass"].toString();
+                }
+                if (obj.contains("assetIndex") && obj["assetIndex"].isObject()) {
+                    config.assetIndex = obj["assetIndex"].toObject()["id"].toString("17");
+                }
+            }
+        }
+    }
+
+    // Gather classpath and module-path
     QString librariesDir = Utils::FileUtils::defaultLauncherDataDir() + "/libraries";
     QDir libDir(librariesDir);
     if (libDir.exists()) {
         QDirIterator it(librariesDir, QStringList() << "*.jar", QDir::Files, QDirIterator::Subdirectories);
         while (it.hasNext()) {
-            config.classpath.append(it.next());
+            QString jar = it.next();
+            config.classpath.append(jar);
+
+            // Categorize NeoForge Java 21 module path dependencies
+            if (jar.contains("modlauncher") || 
+                jar.contains("bootstraplauncher") || 
+                jar.contains("securejarhandler") || 
+                jar.contains("asm-") || 
+                jar.contains("neoforge-")) {
+                config.modulePath.append(jar);
+            }
         }
     }
 
-    QString clientJar = Utils::FileUtils::defaultLauncherDataDir() + "/versions/1.21.1/1.21.1.jar";
+    // Client jar
+    QString clientJar = Utils::FileUtils::defaultLauncherDataDir() + "/versions/1.21.1-neoforge/1.21.1-neoforge.jar";
+    if (!QFile::exists(clientJar)) {
+        clientJar = Utils::FileUtils::defaultLauncherDataDir() + "/versions/1.21.1/1.21.1.jar";
+    }
     if (QFile::exists(clientJar)) {
         config.classpath.append(clientJar);
     }

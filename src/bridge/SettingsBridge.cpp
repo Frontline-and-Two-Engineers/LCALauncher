@@ -140,6 +140,16 @@ void SettingsBridge::setModpackUrl(const QString& url) {
     }
 }
 
+QString SettingsBridge::clientBaseUrl() const { return m_clientBaseUrl; }
+void SettingsBridge::setClientBaseUrl(const QString& url) {
+    QString cleanClient = Utils::UrlUtils::sanitizeClientBaseUrl(url, m_authUrl);
+    if (m_clientBaseUrl != cleanClient) {
+        m_clientBaseUrl = cleanClient;
+        save();
+        emit settingsChanged();
+    }
+}
+
 QString SettingsBridge::gameDir() const { return m_gameDir; }
 void SettingsBridge::setGameDir(const QString& dir) {
     if (m_gameDir != dir) {
@@ -188,9 +198,10 @@ void SettingsBridge::resetToDefaults() {
     m_serverAddress = "mc.myserver.com";
     m_serverPort = 25565;
     m_autoConnect = true;
-    m_authUrl = "http://localhost:8080";
+    m_authUrl = "http://127.0.0.1:8080";
     m_telegramBotUsername = "@LCAMinecraftBot";
-    m_modpackUrl = "http://localhost:8080/api/modpack/manifest.json";
+    m_modpackUrl = "http://127.0.0.1:8080/api/modpack/manifest.json";
+    m_clientBaseUrl = "http://127.0.0.1:8080/api/modpack/files/client-base.zip";
     m_gameDir = Utils::FileUtils::defaultGameDir();
 
     if (m_authService) {
@@ -212,6 +223,7 @@ void SettingsBridge::load() {
     m_authUrl = Utils::UrlUtils::sanitizeBaseUrl(m_settings.value("settings/authUrl", m_authUrl).toString());
     m_telegramBotUsername = Utils::UrlUtils::sanitizeTelegramBot(m_settings.value("settings/telegramBotUsername", m_telegramBotUsername).toString());
     m_modpackUrl = Utils::UrlUtils::sanitizeModpackUrl(m_settings.value("settings/modpackUrl", m_modpackUrl).toString(), m_authUrl);
+    m_clientBaseUrl = Utils::UrlUtils::sanitizeClientBaseUrl(m_settings.value("settings/clientBaseUrl", m_clientBaseUrl).toString(), m_authUrl);
     m_gameDir = m_settings.value("settings/gameDir", m_gameDir).toString();
 }
 
@@ -224,6 +236,7 @@ void SettingsBridge::save() {
     m_settings.setValue("settings/authUrl", m_authUrl);
     m_settings.setValue("settings/telegramBotUsername", m_telegramBotUsername);
     m_settings.setValue("settings/modpackUrl", m_modpackUrl);
+    m_settings.setValue("settings/clientBaseUrl", m_clientBaseUrl);
     m_settings.setValue("settings/gameDir", m_gameDir);
     m_settings.sync();
 }

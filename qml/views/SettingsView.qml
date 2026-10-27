@@ -190,12 +190,13 @@ Item {
                 // 4. Backend & Telegram Bot Section
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 220
+                    implicitHeight: backendColumn.implicitHeight + 40
                     radius: 12
                     color: "#181B27"
                     border.color: "#272C3E"
 
                     ColumnLayout {
+                        id: backendColumn
                         anchors.fill: parent
                         anchors.margins: 20
                         spacing: 12
@@ -218,7 +219,7 @@ Item {
                                 LCATextField {
                                     Layout.fillWidth: true
                                     text: settingsBridge.authUrl
-                                    placeholderText: "http://localhost:8080"
+                                    placeholderText: "http://127.0.0.1:8080"
                                     onEditingFinished: settingsBridge.authUrl = text
                                 }
                             }
@@ -243,8 +244,20 @@ Item {
                             LCATextField {
                                 Layout.fillWidth: true
                                 text: settingsBridge.modpackUrl
-                                placeholderText: "http://localhost:8080/api/modpack/manifest.json"
+                                placeholderText: "http://127.0.0.1:8080/api/modpack/manifest.json"
                                 onEditingFinished: settingsBridge.modpackUrl = text
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Text { text: "URL базового клиента 1.21.1 NeoForge (client-base.zip)"; color: "#8E98B0"; font.pixelSize: 12 }
+                            LCATextField {
+                                Layout.fillWidth: true
+                                text: settingsBridge.clientBaseUrl
+                                placeholderText: "http://127.0.0.1:8080/api/modpack/files/client-base.zip"
+                                onEditingFinished: settingsBridge.clientBaseUrl = text
                             }
                         }
                     }

@@ -101,6 +101,32 @@ public:
 
         return url;
     }
+
+    /**
+     * @brief Sanitizes client base archive URL (e.g. client-base.zip).
+     */
+    static QString sanitizeClientBaseUrl(const QString& raw, const QString& baseUrl = QString()) {
+        QString url = raw.trimmed();
+        if (url.isEmpty()) {
+            QString base = baseUrl.isEmpty() ? "http://127.0.0.1:8080" : sanitizeBaseUrl(baseUrl);
+            return base + "/api/modpack/files/client-base.zip";
+        }
+
+        url.replace("://0.0.0.0", "://127.0.0.1");
+        if (url.startsWith("0.0.0.0")) {
+            url.replace(0, 7, "127.0.0.1");
+        }
+
+        while (url.endsWith('/')) {
+            url.chop(1);
+        }
+
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            url.prepend("http://");
+        }
+
+        return url;
+    }
 };
 
 } // namespace LCA::Utils
