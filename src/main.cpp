@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
     app.setOrganizationDomain("lcaproject.org");
     app.setApplicationName("LCALauncher");
     app.setApplicationVersion("1.0.0");
+    app.setWindowIcon(QIcon(":/qt/qml/LCALauncher/assets/logo.png"));
 
     QQuickStyle::setStyle("Basic");
 

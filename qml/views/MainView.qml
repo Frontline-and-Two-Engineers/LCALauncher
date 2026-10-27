@@ -82,16 +82,14 @@ Item {
                             }
 
                             Text {
-                                text: serverStatusBridge.version.length > 0 ? ("Minecraft " + serverStatusBridge.version) : "Minecraft 1.21.1"
+                                text: "Live, Camera, Action!"
                                 color: "#FFFFFF"
                                 font.pixelSize: 32
                                 font.bold: true
                             }
 
                             Text {
-                                text: (serverStatusBridge.isOnline && serverStatusBridge.motd.length > 0)
-                                        ? serverStatusBridge.motd
-                                        : "NeoForge Edition • Модовый сервер с кастомным клиентом"
+                                text: "Live, Camera, Action! 3 СЕЗОН | FROSTY WINTER\nПри поддержке dead_seniordev"
                                 color: "#9EA8C2"
                                 font.pixelSize: 14
                                 elide: Text.ElideRight

@@ -131,6 +131,8 @@ qt_add_qml_module(LCALauncher
         qml/views/LoginView.qml
         qml/views/SettingsView.qml
         qml/views/ConsoleView.qml
+    RESOURCES
+        assets/logo.png
 )
 
 target_include_directories(LCALauncher PRIVATE

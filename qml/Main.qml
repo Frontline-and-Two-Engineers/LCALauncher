@@ -10,7 +10,7 @@ ApplicationWindow {
     minimumWidth: 880
     minimumHeight: 560
     visible: true
-    title: "LCA Launcher - Minecraft 1.21.1 NeoForge"
+    title: "Live, Camera, Action! SEASON 3 | FROSTY WINTER"
     color: "#0F1118"
 
     property int currentTabIndex: 0 // 0: Main, 1: Settings, 2: Console, 3: Login
@@ -47,37 +47,38 @@ ApplicationWindow {
                 spacing: 20
 
                 // Launcher Title Logo
-                RowLayout {
-                    spacing: 12
-                    Rectangle {
-                        width: 36
-                        height: 36
-                        radius: 8
-                        gradient: Gradient {
-                            orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: "#00E5FF" }
-                            GradientStop { position: 1.0; color: "#7C4DFF" }
-                        }
-                        Text {
-                            anchors.centerIn: parent
-                            text: "⛏"
-                            font.pixelSize: 18
-                        }
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 105
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: window.currentTabIndex = 0
                     }
+
                     ColumnLayout {
-                        spacing: 0
-                        Text {
-                            text: "LCA LAUNCHER"
-                            color: "#FFFFFF"
-                            font.pixelSize: 16
-                            font.bold: true
-                            font.letterSpacing: 1
+                        anchors.fill: parent
+                        spacing: 2
+
+                        Image {
+                            id: logoImg
+                            source: "qrc:/qt/qml/LCALauncher/assets/logo.png"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 88
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            mipmap: true
+                            asynchronous: false
                         }
+
                         Text {
-                            text: "NeoForge 1.21.1"
+                            text: "Frontline&TwoEngineers"
                             color: "#00E5FF"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             font.bold: true
+                            font.letterSpacing: 0.8
+                            Layout.alignment: Qt.AlignHCenter
                         }
                     }
                 }

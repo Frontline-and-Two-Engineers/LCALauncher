@@ -134,7 +134,7 @@ Item {
                 // 3. Network & Server Section
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 200
+                    Layout.preferredHeight: 220
                     radius: 12
                     color: "#181B27"
                     border.color: "#272C3E"

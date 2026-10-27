@@ -50,7 +50,7 @@ SettingsBridge::SettingsBridge(Auth::AuthService* authService, QObject* parent)
         autoDetectJava();
     } else {
         auto info = Java::JavaDetector::inspectJava(m_javaPath);
-        m_detectedJavaInfo = info.isValid ? QString("Java %1 (%2)").arg(info.majorVersion).arg(info.path)
+        m_detectedJavaInfo = info.isValid ? QString("Java %1").arg(info.majorVersion)
                                           : "Выбранный путь Java невалиден";
     }
 }
@@ -69,7 +69,7 @@ void SettingsBridge::setJavaPath(const QString& path) {
     if (m_javaPath != path) {
         m_javaPath = path;
         auto info = Java::JavaDetector::inspectJava(m_javaPath);
-        m_detectedJavaInfo = info.isValid ? QString("Java %1 (%2)").arg(info.majorVersion).arg(info.path)
+        m_detectedJavaInfo = info.isValid ? QString("Java %1").arg(info.majorVersion)
                                           : "Выбранный путь Java невалиден";
         save();
         emit settingsChanged();
@@ -183,7 +183,7 @@ void SettingsBridge::autoDetectJava() {
     auto info = Java::JavaDetector::detectBestJava();
     if (info.isValid) {
         m_javaPath = info.path;
-        m_detectedJavaInfo = QString("Java %1 (%2)").arg(info.majorVersion).arg(info.path);
+        m_detectedJavaInfo = QString("Java %1").arg(info.majorVersion);
         save();
         emit settingsChanged();
         emit javaInfoChanged();
