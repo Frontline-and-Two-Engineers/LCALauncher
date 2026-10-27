@@ -7,6 +7,10 @@
 #include <QDirIterator>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <QGuiApplication>
+#include <QClipboard>
+#include <QSet>
 
 namespace LCA::Bridge {
 
@@ -79,6 +83,10 @@ void LauncherBridge::appendLog(const QString& line) {
 void LauncherBridge::clearLogs() {
     m_consoleLogs.clear();
     emit logsChanged();
+}
+
+void LauncherBridge::copyLogsToClipboard() {
+    QGuiApplication::clipboard()->setText(m_consoleLogs.join("\n"));
 }
 
 void LauncherBridge::killGame() {
@@ -244,8 +252,9 @@ void LauncherBridge::doActualGameLaunch() {
     config.autoConnect = m_settings->autoConnect();
     config.serverAddress = m_settings->serverAddress();
     config.serverPort = m_settings->serverPort();
+    config.librariesDir = baseDataDir + "/libraries";
 
-    // Dynamically locate version jar, version id and version json
+    // 1. Dynamically locate version jar, version id and version json
     QString versionsDir = baseDataDir + "/versions";
     QString clientJar;
     QString versionJson;
@@ -275,7 +284,7 @@ void LauncherBridge::doActualGameLaunch() {
         }
     }
 
-    // Authlib injector path
+    // 2. Authlib injector path
     QString authlibPath = baseDataDir + "/authlib-injector.jar";
     if (!QFile::exists(authlibPath)) {
         QDirIterator aIt(baseDataDir, QStringList() << "authlib-injector*.jar", QDir::Files, QDirIterator::Subdirectories);
@@ -286,10 +295,11 @@ void LauncherBridge::doActualGameLaunch() {
     config.authlibInjectorPath = authlibPath;
     config.authServerYggdrasilUrl = m_settings->authUrl();
 
-    // Default NeoForge main class
+    // 3. Default NeoForge main class
     config.mainClass = "cpw.mods.bootstraplauncher.BootstrapLauncher";
 
-    // Read version JSON if present to get exact mainClass and assetIndex
+    // 4. Read version JSON if present
+    QSet<QString> downloadOnlyNames;
     if (!versionJson.isEmpty() && QFile::exists(versionJson)) {
         QFile file(versionJson);
         if (file.open(QIODevice::ReadOnly)) {
@@ -304,33 +314,111 @@ void LauncherBridge::doActualGameLaunch() {
                 } else if (obj.contains("assets")) {
                     config.assetIndex = obj["assets"].toString("17");
                 }
+
+                // Check libraries for downloadOnly
+                if (obj.contains("libraries") && obj["libraries"].isArray()) {
+                    for (const auto& lVal : obj["libraries"].toArray()) {
+                        QJsonObject lObj = lVal.toObject();
+                        if (lObj["downloadOnly"].toBool(false)) {
+                            QString name = lObj["name"].toString();
+                            QStringList parts = name.split(':');
+                            if (parts.size() >= 3) {
+                                QString artifact = parts[1];
+                                QString ver = parts[2];
+                                QString classifier = parts.size() > 3 ? ("-" + parts[3]) : "";
+                                downloadOnlyNames.insert(artifact + "-" + ver + classifier);
+                                downloadOnlyNames.insert(artifact);
+                            }
+                        }
+                    }
+                }
+
+                // Check extra game arguments (like --fml.neoForgeVersion, --launchTarget, etc.)
+                if (obj.contains("arguments") && obj["arguments"].isObject()) {
+                    QJsonObject argsObj = obj["arguments"].toObject();
+                    if (argsObj.contains("game") && argsObj["game"].isArray()) {
+                        QJsonArray gameArr = argsObj["game"].toArray();
+                        for (int i = 0; i < gameArr.size(); ++i) {
+                            QString val;
+                            if (gameArr[i].isString()) val = gameArr[i].toString();
+                            else if (gameArr[i].isObject()) val = gameArr[i].toObject()["value"].toString();
+
+                            if (val.startsWith("--fml.") || val == "--launchTarget") {
+                                config.extraGameArgs.append(val);
+                                if (i + 1 < gameArr.size()) {
+                                    QString nextVal;
+                                    if (gameArr[i + 1].isString()) nextVal = gameArr[i + 1].toString();
+                                    else if (gameArr[i + 1].isObject()) nextVal = gameArr[i + 1].toObject()["value"].toString();
+                                    if (!nextVal.isEmpty()) {
+                                        config.extraGameArgs.append(nextVal);
+                                        ++i;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    // Gather classpath and module-path
-    QString librariesDir = baseDataDir + "/libraries";
+    // Fallback if --launchTarget was not in JSON
+    if (!config.extraGameArgs.contains("--launchTarget")) {
+        config.extraGameArgs << "--launchTarget" << "forgeclient";
+    }
+
+    // 5. Gather module-path and classpath
+    // In NeoForge 1.21.1:
+    // Module-path MUST ONLY contain: bootstraplauncher, securejarhandler, asm, JarJarFileSystems
+    // Everything else goes to Classpath (EXCEPT downloadOnly jars like universal or srg)
+    QSet<QString> seenClasspath;
+    auto addClasspath = [&](const QString& jar) {
+        if (!jar.isEmpty() && QFile::exists(jar) && !seenClasspath.contains(jar)) {
+            seenClasspath.insert(jar);
+            config.classpath.append(jar);
+        }
+    };
+
+    QString librariesDir = config.librariesDir;
     QDir libDir(librariesDir);
     if (libDir.exists()) {
         QDirIterator it(librariesDir, QStringList() << "*.jar", QDir::Files, QDirIterator::Subdirectories);
         while (it.hasNext()) {
             QString jar = it.next();
-            config.classpath.append(jar);
+            QString fileName = QFileInfo(jar).fileName();
 
-            // Categorize NeoForge Java 21 module path dependencies
-            if (jar.contains("modlauncher") || 
-                jar.contains("bootstraplauncher") || 
-                jar.contains("securejarhandler") || 
-                jar.contains("asm-") || 
-                jar.contains("neoforge-")) {
+            // Module path jars: strictly only the 4 boot module components
+            if (jar.contains("bootstraplauncher") ||
+                jar.contains("securejarhandler") ||
+                jar.contains("JarJarFileSystems") ||
+                (jar.contains("asm") && (jar.contains("/org/ow2/asm/") || jar.contains("\\org\\ow2\\asm\\")))) {
                 config.modulePath.append(jar);
+            }
+
+            // Check if this jar is downloadOnly / mod jar (should NOT be on classpath)
+            bool isDownloadOnly = false;
+            if (jar.contains("neoforge-") && jar.contains("universal")) {
+                isDownloadOnly = true;
+            } else if (jar.contains("client-") && (jar.contains("-srg") || jar.contains("-slim") || jar.contains("-extra"))) {
+                isDownloadOnly = true;
+            } else {
+                for (const QString& dName : downloadOnlyNames) {
+                    if (fileName.contains(dName)) {
+                        isDownloadOnly = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!isDownloadOnly) {
+                addClasspath(jar);
             }
         }
     }
 
     // Append client jar if found
     if (!clientJar.isEmpty() && QFile::exists(clientJar)) {
-        config.classpath.append(clientJar);
+        addClasspath(clientJar);
     }
 
     // Launch!

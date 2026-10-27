@@ -6,6 +6,11 @@ import "../components"
 Item {
     id: root
 
+    Timer {
+        id: copiedTimer
+        interval: 2000
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "#12141D"
@@ -27,6 +32,16 @@ Item {
                 }
 
                 Item { Layout.fillWidth: true }
+
+                LCAButton {
+                    text: copiedTimer.running ? "✓ Скопировано!" : "📋 Скопировать всё"
+                    Layout.preferredWidth: 160
+                    Layout.preferredHeight: 36
+                    onClicked: {
+                        launcherBridge.copyLogsToClipboard()
+                        copiedTimer.restart()
+                    }
+                }
 
                 LCAButton {
                     text: "Очистить"
@@ -51,12 +66,17 @@ Item {
                     model: launcherBridge.consoleLogs
                     spacing: 4
 
-                    delegate: Text {
+                    delegate: TextEdit {
                         width: logListView.width
                         text: modelData
+                        readOnly: true
+                        selectByMouse: true
+                        activeFocusOnPress: false
+                        selectionColor: "#4000E5FF"
+                        selectedTextColor: "#FFFFFF"
                         font.family: "JetBrains Mono, Menlo, Consolas, monospace"
                         font.pixelSize: 12
-                        wrapMode: Text.WrapAnywhere
+                        wrapMode: TextEdit.WrapAnywhere
                         color: {
                             if (modelData.indexOf("[ERR]") !== -1 || modelData.indexOf("Exception") !== -1 || modelData.indexOf("ERROR") !== -1)
                                 return "#FF5252"

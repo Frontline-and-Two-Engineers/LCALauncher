@@ -32,6 +32,7 @@ public:
     Q_INVOKABLE void launchGame();
     Q_INVOKABLE void killGame();
     Q_INVOKABLE void clearLogs();
+    Q_INVOKABLE void copyLogsToClipboard();
 
 signals:
     void statusChanged();

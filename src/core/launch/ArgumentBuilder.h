@@ -27,9 +27,11 @@ struct LaunchConfig {
     bool autoConnect{false};
 
     // Classpath and module paths
+    QString librariesDir;
     QStringList classpath;
     QStringList modulePath;
     QStringList extraJvmArgs;
+    QStringList extraGameArgs;
 };
 
 class ArgumentBuilder {
