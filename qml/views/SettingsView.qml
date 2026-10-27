@@ -178,6 +178,35 @@ Item {
                             }
                         }
 
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
+
+                            Rectangle {
+                                width: 8
+                                height: 8
+                                radius: 4
+                                color: serverStatusBridge.statusColor
+                            }
+
+                            Text {
+                                text: serverStatusBridge.statusText + " (" + serverStatusBridge.playersText + ")" + (serverStatusBridge.isOnline ? (" • " + serverStatusBridge.pingMs + " ms") : "")
+                                color: serverStatusBridge.statusColor
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            LCAButton {
+                                text: serverStatusBridge.isChecking ? "Проверка..." : "Проверить"
+                                Layout.preferredWidth: 110
+                                Layout.preferredHeight: 32
+                                enabled: !serverStatusBridge.isChecking
+                                onClicked: serverStatusBridge.refresh()
+                            }
+                        }
+
                         CheckBox {
                             text: "Автоматически подключаться к серверу при старте (--quickPlayMultiplayer)"
                             checked: settingsBridge.autoConnect

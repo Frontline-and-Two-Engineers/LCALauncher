@@ -104,6 +104,10 @@ qt_add_executable(LCALauncher
     src/core/launch/GameProcess.h
     src/core/launch/GameProcess.cpp
 
+    # Core - Server (Ping & Status)
+    src/core/server/MinecraftPinger.h
+    src/core/server/MinecraftPinger.cpp
+
     # Bridge (C++ <-> QML)
     src/bridge/AuthBridge.h
     src/bridge/AuthBridge.cpp
@@ -111,6 +115,8 @@ qt_add_executable(LCALauncher
     src/bridge/SettingsBridge.cpp
     src/bridge/LauncherBridge.h
     src/bridge/LauncherBridge.cpp
+    src/bridge/ServerStatusBridge.h
+    src/bridge/ServerStatusBridge.cpp
 )
 
 qt_add_qml_module(LCALauncher

@@ -58,55 +58,130 @@ Item {
                                     width: 8
                                     height: 8
                                     radius: 4
-                                    color: "#00FFA3"
+                                    color: serverStatusBridge.statusColor
+
+                                    SequentialAnimation on opacity {
+                                        running: serverStatusBridge.isOnline
+                                        loops: Animation.Infinite
+                                        NumberAnimation { from: 1.0; to: 0.4; duration: 900; easing.type: Easing.InOutQuad }
+                                        NumberAnimation { from: 0.4; to: 1.0; duration: 900; easing.type: Easing.InOutQuad }
+                                    }
                                 }
                                 Text {
-                                    text: "СЕРВЕР ОНЛАЙН"
-                                    color: "#00FFA3"
+                                    text: serverStatusBridge.statusText
+                                    color: serverStatusBridge.statusColor
                                     font.pixelSize: 11
                                     font.bold: true
                                     font.letterSpacing: 1.5
                                 }
+                                Text {
+                                    text: "•  " + settingsBridge.serverAddress + (settingsBridge.serverPort !== 25565 ? (":" + settingsBridge.serverPort) : "")
+                                    color: "#6E7790"
+                                    font.pixelSize: 11
+                                }
                             }
 
                             Text {
-                                text: "Minecraft 1.21.1"
+                                text: serverStatusBridge.version.length > 0 ? ("Minecraft " + serverStatusBridge.version) : "Minecraft 1.21.1"
                                 color: "#FFFFFF"
                                 font.pixelSize: 32
                                 font.bold: true
                             }
 
                             Text {
-                                text: "NeoForge Edition • Модовый сервер с кастомным клиентом"
+                                text: (serverStatusBridge.isOnline && serverStatusBridge.motd.length > 0)
+                                        ? serverStatusBridge.motd
+                                        : "NeoForge Edition • Модовый сервер с кастомным клиентом"
                                 color: "#9EA8C2"
                                 font.pixelSize: 14
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
                             }
                         }
 
                         Rectangle {
-                            Layout.preferredWidth: 140
-                            Layout.preferredHeight: 60
-                            radius: 10
-                            color: "#161926"
-                            border.color: "#2C3147"
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 74
+                            radius: 12
+                            color: onlineMouseArea.containsMouse ? "#1E2235" : "#161926"
+                            border.color: onlineMouseArea.containsMouse ? "#00E5FF" : "#2C3147"
+                            border.width: 1
 
-                            Column {
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            MouseArea {
+                                id: onlineMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: serverStatusBridge.refresh()
+                            }
+
+                            ToolTip.visible: onlineMouseArea.containsMouse
+                            ToolTip.text: "Нажмите, чтобы обновить статус сервера"
+                            ToolTip.delay: 400
+
+                            ColumnLayout {
                                 anchors.centerIn: parent
                                 spacing: 2
-                                Text {
-                                    text: "Онлайн"
-                                    color: "#7E879E"
-                                    font.pixelSize: 11
-                                    horizontalAlignment: Text.AlignHCenter
-                                    anchors.horizontalCenter: parent.horizontalCenter
+
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    spacing: 6
+
+                                    Text {
+                                        text: "Онлайн"
+                                        color: "#7E879E"
+                                        font.pixelSize: 11
+                                    }
+
+                                    Text {
+                                        text: "↻"
+                                        color: serverStatusBridge.isChecking ? "#00E5FF" : "#555E75"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        rotation: serverStatusBridge.isChecking ? refreshAnim.angle : 0
+
+                                        NumberAnimation on rotation {
+                                            id: refreshAnim
+                                            property real angle: 0
+                                            running: serverStatusBridge.isChecking
+                                            loops: Animation.Infinite
+                                            from: 0
+                                            to: 360
+                                            duration: 800
+                                        }
+                                    }
                                 }
+
                                 Text {
-                                    text: "48 / 150"
-                                    color: "#00E5FF"
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: serverStatusBridge.playersText
+                                    color: serverStatusBridge.isOnline ? "#00E5FF" : (serverStatusBridge.isChecking ? "#FFB300" : "#7E879E")
                                     font.pixelSize: 18
                                     font.bold: true
-                                    horizontalAlignment: Text.AlignHCenter
-                                    anchors.horizontalCenter: parent.horizontalCenter
+                                }
+
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    spacing: 4
+                                    visible: serverStatusBridge.isOnline
+
+                                    Text {
+                                        text: "📶"
+                                        font.pixelSize: 9
+                                    }
+                                    Text {
+                                        text: serverStatusBridge.pingMs + " ms"
+                                        color: {
+                                            if (serverStatusBridge.pingMs < 60) return "#00FFA3";
+                                            if (serverStatusBridge.pingMs < 150) return "#FFD54F";
+                                            return "#FF5252";
+                                        }
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                    }
                                 }
                             }
                         }

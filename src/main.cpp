@@ -8,6 +8,7 @@
 #include "bridge/AuthBridge.h"
 #include "bridge/SettingsBridge.h"
 #include "bridge/LauncherBridge.h"
+#include "bridge/ServerStatusBridge.h"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
@@ -27,6 +28,7 @@ int main(int argc, char *argv[]) {
     auto settingsBridge = new LCA::Bridge::SettingsBridge(authService, &app);
     auto authBridge = new LCA::Bridge::AuthBridge(authService, &app);
     auto launcherBridge = new LCA::Bridge::LauncherBridge(authService, settingsBridge, &app);
+    auto serverStatusBridge = new LCA::Bridge::ServerStatusBridge(settingsBridge, &app);
 
     QQmlApplicationEngine engine;
 
@@ -34,6 +36,7 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("authBridge", authBridge);
     engine.rootContext()->setContextProperty("settingsBridge", settingsBridge);
     engine.rootContext()->setContextProperty("launcherBridge", launcherBridge);
+    engine.rootContext()->setContextProperty("serverStatusBridge", serverStatusBridge);
 
     // Load Main QML from module
     const QUrl url(QStringLiteral("qrc:/qt/qml/LCALauncher/qml/Main.qml"));
