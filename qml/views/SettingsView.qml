@@ -187,7 +187,70 @@ Item {
                     }
                 }
 
-                // 4. Reset & Defaults
+                // 4. Backend & Telegram Bot Section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 220
+                    radius: 12
+                    color: "#181B27"
+                    border.color: "#272C3E"
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 20
+                        spacing: 12
+
+                        Text {
+                            text: "Сервер авторизации и сборки"
+                            color: "#FFFFFF"
+                            font.pixelSize: 15
+                            font.bold: true
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+                                Text { text: "URL API бэкенда"; color: "#8E98B0"; font.pixelSize: 12 }
+                                LCATextField {
+                                    Layout.fillWidth: true
+                                    text: settingsBridge.authUrl
+                                    placeholderText: "http://localhost:8080"
+                                    onEditingFinished: settingsBridge.authUrl = text
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.preferredWidth: 180
+                                spacing: 4
+                                Text { text: "Имя бота в Telegram"; color: "#8E98B0"; font.pixelSize: 12 }
+                                LCATextField {
+                                    Layout.fillWidth: true
+                                    text: settingsBridge.telegramBotUsername
+                                    placeholderText: "@LCAMinecraftBot"
+                                    onEditingFinished: settingsBridge.telegramBotUsername = text
+                                }
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Text { text: "URL манифеста сборки (manifest.json)"; color: "#8E98B0"; font.pixelSize: 12 }
+                            LCATextField {
+                                Layout.fillWidth: true
+                                text: settingsBridge.modpackUrl
+                                placeholderText: "http://localhost:8080/api/modpack/manifest.json"
+                                onEditingFinished: settingsBridge.modpackUrl = text
+                            }
+                        }
+                    }
+                }
+
+                // 5. Reset & Defaults
                 RowLayout {
                     Layout.fillWidth: true
                     Item { Layout.fillWidth: true }

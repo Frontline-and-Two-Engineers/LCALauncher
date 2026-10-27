@@ -2,11 +2,13 @@
 #include "core/utils/FileUtils.h"
 #include "core/java/JavaDetector.h"
 #include "core/java/JavaDownloader.h"
+#include "core/auth/AuthService.h"
 
 namespace LCA::Bridge {
 
-SettingsBridge::SettingsBridge(QObject* parent)
+SettingsBridge::SettingsBridge(Auth::AuthService* authService, QObject* parent)
     : QObject(parent)
+    , m_authService(authService)
     , m_settings("LCAProject", "LCALauncher")
     , m_javaDownloader(new Java::JavaDownloader(this))
 {
@@ -37,6 +39,12 @@ SettingsBridge::SettingsBridge(QObject* parent)
 
     m_gameDir = Utils::FileUtils::defaultGameDir();
     load();
+
+    if (m_authService) {
+        m_authService->setBaseUrl(m_authUrl);
+        m_authService->setTelegramBotUsername(m_telegramBotUsername);
+    }
+
     if (m_javaPath.isEmpty()) {
         autoDetectJava();
     } else {
@@ -99,6 +107,21 @@ QString SettingsBridge::authUrl() const { return m_authUrl; }
 void SettingsBridge::setAuthUrl(const QString& url) {
     if (m_authUrl != url) {
         m_authUrl = url;
+        if (m_authService) {
+            m_authService->setBaseUrl(url);
+        }
+        save();
+        emit settingsChanged();
+    }
+}
+
+QString SettingsBridge::telegramBotUsername() const { return m_telegramBotUsername; }
+void SettingsBridge::setTelegramBotUsername(const QString& username) {
+    if (m_telegramBotUsername != username) {
+        m_telegramBotUsername = username;
+        if (m_authService) {
+            m_authService->setTelegramBotUsername(username);
+        }
         save();
         emit settingsChanged();
     }
@@ -161,7 +184,16 @@ void SettingsBridge::resetToDefaults() {
     m_serverAddress = "mc.myserver.com";
     m_serverPort = 25565;
     m_autoConnect = true;
+    m_authUrl = "http://localhost:8080";
+    m_telegramBotUsername = "@LCAMinecraftBot";
+    m_modpackUrl = "http://localhost:8080/api/modpack/manifest.json";
     m_gameDir = Utils::FileUtils::defaultGameDir();
+
+    if (m_authService) {
+        m_authService->setBaseUrl(m_authUrl);
+        m_authService->setTelegramBotUsername(m_telegramBotUsername);
+    }
+
     autoDetectJava();
     save();
     emit settingsChanged();
@@ -174,6 +206,7 @@ void SettingsBridge::load() {
     m_serverPort = m_settings.value("settings/serverPort", m_serverPort).toInt();
     m_autoConnect = m_settings.value("settings/autoConnect", m_autoConnect).toBool();
     m_authUrl = m_settings.value("settings/authUrl", m_authUrl).toString();
+    m_telegramBotUsername = m_settings.value("settings/telegramBotUsername", m_telegramBotUsername).toString();
     m_modpackUrl = m_settings.value("settings/modpackUrl", m_modpackUrl).toString();
     m_gameDir = m_settings.value("settings/gameDir", m_gameDir).toString();
 }
@@ -185,6 +218,7 @@ void SettingsBridge::save() {
     m_settings.setValue("settings/serverPort", m_serverPort);
     m_settings.setValue("settings/autoConnect", m_autoConnect);
     m_settings.setValue("settings/authUrl", m_authUrl);
+    m_settings.setValue("settings/telegramBotUsername", m_telegramBotUsername);
     m_settings.setValue("settings/modpackUrl", m_modpackUrl);
     m_settings.setValue("settings/gameDir", m_gameDir);
     m_settings.sync();

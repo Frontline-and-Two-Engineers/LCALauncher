@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     authService->restoreSavedSession();
 
     // Initialize Bridge ViewModels
-    auto settingsBridge = new LCA::Bridge::SettingsBridge(&app);
+    auto settingsBridge = new LCA::Bridge::SettingsBridge(authService, &app);
     auto authBridge = new LCA::Bridge::AuthBridge(authService, &app);
     auto launcherBridge = new LCA::Bridge::LauncherBridge(authService, settingsBridge, &app);
 

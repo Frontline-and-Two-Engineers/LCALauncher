@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QTimer>
 #include <QSettings>
 #include "UserSession.h"
 
@@ -13,35 +14,66 @@ class AuthService : public QObject {
 
 public:
     explicit AuthService(QObject* parent = nullptr);
+    ~AuthService() override;
 
-    void setAuthServerUrl(const QString& url);
-    QString authServerUrl() const;
+    void setBaseUrl(const QString& url);
+    QString baseUrl() const;
 
-    void loginWithCredentials(const QString& username, const QString& password);
+    void setTelegramBotUsername(const QString& botUsername);
+    QString telegramBotUsername() const;
+
+    // Telegram Code Auth flow
+    void requestCode();
+    void cancelCodePolling();
+
+    // Offline fallback
     void loginOffline(const QString& username);
+
+    // Session management
+    void validateSession();
     void logout();
 
     bool hasSavedSession() const;
     UserSession currentSession() const;
     void restoreSavedSession();
 
+    QString currentCode() const;
+    int remainingSeconds() const;
+    bool isPolling() const;
+
 signals:
+    void codeReceived(const QString& code, int expiresInSeconds);
+    void codeTick(int remainingSeconds);
+    void codeExpired();
     void loginStarted();
     void loginSuccess(const UserSession& session);
     void loginFailed(const QString& error);
     void logoutFinished();
 
 private slots:
-    void onNetworkReplyFinished(QNetworkReply* reply);
+    void pollCodeStatus();
+    void onTimerTick();
 
 private:
+    void pollReplyFinished(QNetworkReply* reply);
+    void requestCodeReplyFinished(QNetworkReply* reply);
+    void validateReplyFinished(QNetworkReply* reply);
+
     void saveSession(const UserSession& session);
     void clearSavedSession();
 
     QNetworkAccessManager m_network;
-    QString m_authUrl{"https://auth.myserver.com/api/auth/login"}; // Default, configurable in Settings
+    QString m_baseUrl{"http://localhost:8080"};
+    QString m_telegramBotUsername{"@LCAMinecraftBot"};
+
     UserSession m_session;
     QSettings m_settings;
+
+    QString m_currentCode;
+    int m_remainingSeconds{0};
+    QTimer* m_pollTimer{nullptr};
+    QTimer* m_countdownTimer{nullptr};
+    bool m_isPolling{false};
 };
 
 } // namespace LCA::Auth
