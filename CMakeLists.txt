@@ -133,6 +133,7 @@ qt_add_qml_module(LCALauncher
         qml/views/ConsoleView.qml
     RESOURCES
         assets/logo.png
+        assets/background.jpg
 )
 
 target_include_directories(LCALauncher PRIVATE

@@ -8,7 +8,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#12141D"
+        color: "transparent"
 
         ScrollView {
             anchors.fill: parent
@@ -31,9 +31,10 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 120
-                    radius: 12
-                    color: "#181B27"
-                    border.color: "#272C3E"
+                    radius: 14
+                    color: "#990F1424"
+                    border.color: "#30FFFFFF"
+                    border.width: 1
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -73,9 +74,10 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 130
-                    radius: 12
-                    color: "#181B27"
-                    border.color: "#272C3E"
+                    radius: 14
+                    color: "#990F1424"
+                    border.color: "#30FFFFFF"
+                    border.width: 1
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -135,9 +137,10 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 220
-                    radius: 12
-                    color: "#181B27"
-                    border.color: "#272C3E"
+                    radius: 14
+                    color: "#990F1424"
+                    border.color: "#30FFFFFF"
+                    border.width: 1
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -220,9 +223,10 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: backendColumn.implicitHeight + 40
-                    radius: 12
-                    color: "#181B27"
-                    border.color: "#272C3E"
+                    radius: 14
+                    color: "#990F1424"
+                    border.color: "#30FFFFFF"
+                    border.width: 1
 
                     ColumnLayout {
                         id: backendColumn

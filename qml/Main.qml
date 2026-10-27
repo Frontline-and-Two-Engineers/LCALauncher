@@ -29,16 +29,46 @@ ApplicationWindow {
         }
     }
 
+    // ================= Background Image =================
+    Image {
+        id: bgImage
+        anchors.fill: parent
+        source: "qrc:/qt/qml/LCALauncher/assets/background.jpg"
+        fillMode: Image.PreserveAspectCrop
+        smooth: true
+        mipmap: true
+        asynchronous: false
+    }
+
+    // Atmospheric Frosted Overlay (Darkening Vignette for high contrast)
+    Rectangle {
+        anchors.fill: parent
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0.0; color: "#55070912" }
+            GradientStop { position: 0.5; color: "#660A0D18" }
+            GradientStop { position: 1.0; color: "#88050710" }
+        }
+    }
+
+    // Frosty Cyan Ambient Rim
+    Rectangle {
+        anchors.fill: parent
+        color: "transparent"
+        border.color: "#1A00E5FF"
+        border.width: 1
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
 
-        // ================= Sidebar =================
+        // ================= Sidebar (Liquid Glass) =================
         Rectangle {
             Layout.preferredWidth: 230
             Layout.fillHeight: true
-            color: "#141620"
-            border.color: "#1F2332"
+            color: "#A60D101C"
+            border.color: "#2EFFFFFF"
             border.width: 1
 
             ColumnLayout {
@@ -86,7 +116,7 @@ ApplicationWindow {
                 Rectangle {
                     Layout.fillWidth: true
                     height: 1
-                    color: "#222738"
+                    color: "#26FFFFFF"
                 }
 
                 // Nav Buttons
@@ -104,11 +134,17 @@ ApplicationWindow {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 46
-                            radius: 8
-                            color: (window.currentTabIndex === modelData.index) ? "#202538" :
-                                   navArea.containsMouse ? "#181B27" : "transparent"
-                            border.color: (window.currentTabIndex === modelData.index) ? "#00E5FF" : "transparent"
+                            radius: 10
+                            color: (window.currentTabIndex === modelData.index)
+                                   ? "#4000E5FF"
+                                   : (navArea.containsMouse ? "#26FFFFFF" : "#1AFFFFFF")
+                            border.color: (window.currentTabIndex === modelData.index)
+                                          ? "#00E5FF"
+                                          : (navArea.containsMouse ? "#4DFFFFFF" : "#1AFFFFFF")
                             border.width: 1
+
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
 
                             RowLayout {
                                 anchors.fill: parent
@@ -121,7 +157,7 @@ ApplicationWindow {
                                 }
                                 Text {
                                     text: modelData.name
-                                    color: (window.currentTabIndex === modelData.index) ? "#FFFFFF" : "#8E98B0"
+                                    color: (window.currentTabIndex === modelData.index) ? "#FFFFFF" : "#A6B2CC"
                                     font.pixelSize: 14
                                     font.bold: window.currentTabIndex === modelData.index
                                 }
@@ -144,9 +180,13 @@ ApplicationWindow {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
-                    radius: 10
-                    color: "#181C2A"
-                    border.color: "#262C3E"
+                    radius: 12
+                    color: profileMouse.containsMouse ? "#B3141829" : "#8C0F1322"
+                    border.color: profileMouse.containsMouse ? "#00E5FF" : "#30FFFFFF"
+                    border.width: 1
+
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
 
                     RowLayout {
                         anchors.fill: parent
@@ -157,7 +197,9 @@ ApplicationWindow {
                             width: 40
                             height: 40
                             radius: 8
-                            color: "#2C344E"
+                            color: "#3D2C344E"
+                            border.color: "#40FFFFFF"
+                            border.width: 1
                             Text {
                                 anchors.centerIn: parent
                                 text: authBridge.isLoggedIn ? authBridge.username.slice(0, 1).toUpperCase() : "?"
@@ -180,14 +222,16 @@ ApplicationWindow {
                             }
                             Text {
                                 text: authBridge.isLoggedIn ? (authBridge.userType === "custom" ? "Аккаунт сервера" : "Оффлайн") : "Нажмите для входа"
-                                color: authBridge.isLoggedIn ? "#00FFA3" : "#FF9100"
+                                color: authBridge.isLoggedIn ? "#00FFA3" : "#FFB300"
                                 font.pixelSize: 11
                             }
                         }
                     }
 
                     MouseArea {
+                        id: profileMouse
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: window.currentTabIndex = 3 // Go to login view
                     }

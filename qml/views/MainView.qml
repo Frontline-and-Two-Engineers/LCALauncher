@@ -34,13 +34,13 @@ Item {
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: 14
+                    radius: 16
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#1E2233" }
-                        GradientStop { position: 1.0; color: "#141724" }
+                        GradientStop { position: 0.0; color: "#A6151D2F" }
+                        GradientStop { position: 1.0; color: "#800F1322" }
                     }
-                    border.color: "#2C3147"
+                    border.color: "#33FFFFFF"
                     border.width: 1
 
                     RowLayout {
@@ -195,9 +195,10 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 90
-                    radius: 12
-                    color: "#181B27"
-                    border.color: "#262B3D"
+                    radius: 14
+                    color: "#8C0F1424"
+                    border.color: "#2EFFFFFF"
+                    border.width: 1
 
                     RowLayout {
                         anchors.fill: parent
@@ -230,9 +231,10 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 90
-                    radius: 12
-                    color: "#181B27"
-                    border.color: "#262B3D"
+                    radius: 14
+                    color: "#8C0F1424"
+                    border.color: "#2EFFFFFF"
+                    border.width: 1
 
                     RowLayout {
                         anchors.fill: parent
@@ -267,9 +269,10 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 110
-                radius: 16
-                color: "#181A26"
-                border.color: "#272C3E"
+                radius: 18
+                color: "#A60C101A"
+                border.color: "#33FFFFFF"
+                border.width: 1
 
                 RowLayout {
                     anchors.fill: parent

@@ -15,8 +15,8 @@ TextField {
 
     background: Rectangle {
         radius: 8
-        color: root.activeFocus ? "#1C202E" : "#171A24"
-        border.color: root.activeFocus ? "#00E5FF" : "#2E3347"
+        color: root.activeFocus ? "#B3161C2C" : "#800F1320"
+        border.color: root.activeFocus ? "#00E5FF" : "#33FFFFFF"
         border.width: 1
 
         Behavior on border.color { ColorAnimation { duration: 150 } }

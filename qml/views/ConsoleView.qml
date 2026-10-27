@@ -13,7 +13,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#12141D"
+        color: "transparent"
 
         ColumnLayout {
             anchors.fill: parent
@@ -54,9 +54,10 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 10
-                color: "#0D0E15"
-                border.color: "#212638"
+                radius: 14
+                color: "#B30A0D15"
+                border.color: "#2EFFFFFF"
+                border.width: 1
                 clip: true
 
                 ListView {

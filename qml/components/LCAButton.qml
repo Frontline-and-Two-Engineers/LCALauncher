@@ -31,12 +31,12 @@ Button {
                 return root.down ? Qt.darker(root.accentColor, 1.3) :
                        root.hovered ? Qt.lighter(root.accentColor, 1.15) : root.accentColor
             } else {
-                return root.down ? "#222533" :
-                       root.hovered ? "#2A2E40" : "#1F222E"
+                return root.down ? "#991D2436" :
+                       root.hovered ? "#CC263148" : "#80161C2A"
             }
         }
 
-        border.color: root.isPrimary ? "transparent" : (root.hovered ? root.accentColor : "#31364A")
+        border.color: root.isPrimary ? "transparent" : (root.hovered ? root.accentColor : "#33FFFFFF")
         border.width: 1
 
         Behavior on color { ColorAnimation { duration: 150 } }

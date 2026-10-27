@@ -26,7 +26,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#12141D"
+        color: "transparent"
 
         // Background decorative glow
         Rectangle {
@@ -155,8 +155,8 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 180
                         radius: 16
-                        color: "#181B27"
-                        border.color: authBridge.isCodeExpired ? "#FF5252" : (authBridge.isPolling ? "#00E5FF" : "#2A3044")
+                        color: "#990F1322"
+                        border.color: authBridge.isCodeExpired ? "#FF5252" : (authBridge.isPolling ? "#00E5FF" : "#30FFFFFF")
                         border.width: authBridge.isPolling ? 2 : 1
 
                         ColumnLayout {
@@ -238,8 +238,9 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 90
                         radius: 12
-                        color: "#161925"
-                        border.color: "#24293A"
+                        color: "#8C0F1424"
+                        border.color: "#2EFFFFFF"
+                        border.width: 1
 
                         ColumnLayout {
                             anchors.fill: parent
