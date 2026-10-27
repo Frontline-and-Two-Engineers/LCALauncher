@@ -371,7 +371,16 @@ void LauncherBridge::doActualGameLaunch() {
         }
     }
     config.authlibInjectorPath = authlibPath;
-    config.authServerYggdrasilUrl = m_settings->authUrl();
+
+    // Ensure Yggdrasil URL points to /api/yggdrasil endpoint
+    QString authUrl = m_settings->authUrl().trimmed();
+    if (!authUrl.isEmpty() && !authUrl.contains("/api/yggdrasil")) {
+        if (authUrl.endsWith('/')) {
+            authUrl.chop(1);
+        }
+        authUrl += "/api/yggdrasil";
+    }
+    config.authServerYggdrasilUrl = authUrl;
 
     // 3. Default NeoForge main class
     config.mainClass = "cpw.mods.bootstraplauncher.BootstrapLauncher";
