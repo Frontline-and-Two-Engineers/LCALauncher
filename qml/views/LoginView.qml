@@ -7,6 +7,7 @@ Item {
     id: root
 
     signal backClicked()
+    signal openSettingsRequested()
 
     property bool isOfflineMode: false
     property bool isCopiedNotification: false
@@ -71,25 +72,74 @@ Item {
 
                 // Error Message Box
                 Rectangle {
+                    id: errorBox
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 44
-                    radius: 8
-                    color: "#33FF5252"
-                    border.color: "#FF5252"
+                    implicitHeight: errorLayout.implicitHeight + 24
+                    radius: 10
+                    color: "#2B1417"
+                    border.color: "#FF453A"
+                    border.width: 1
                     visible: authBridge.errorMessage !== ""
 
                     RowLayout {
+                        id: errorLayout
                         anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 8
-                        Text { text: "⚠️"; font.pixelSize: 16 }
+                        anchors.margins: 12
+                        spacing: 12
+
                         Text {
-                            text: authBridge.errorMessage
-                            color: "#FF8A80"
-                            font.pixelSize: 12
-                            font.bold: true
+                            text: "⚠️"
+                            font.pixelSize: 20
+                            Layout.alignment: Qt.AlignTop
+                        }
+
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            elide: Text.ElideRight
+                            spacing: 8
+
+                            Text {
+                                text: authBridge.errorMessage
+                                color: "#FFB4AB"
+                                font.pixelSize: 12
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                textFormat: Text.PlainText
+                                lineHeight: 1.25
+                            }
+
+                            RowLayout {
+                                spacing: 14
+
+                                Text {
+                                    text: "⚙️ Настройки сервера"
+                                    color: "#00E5FF"
+                                    font.pixelSize: 12
+                                    font.underline: settingsMouse.containsMouse
+
+                                    MouseArea {
+                                        id: settingsMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.openSettingsRequested()
+                                    }
+                                }
+
+                                Text {
+                                    text: "🔄 Повторить попытку"
+                                    color: "#00FFA3"
+                                    font.pixelSize: 12
+                                    font.underline: retryMouse.containsMouse
+
+                                    MouseArea {
+                                        id: retryMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: authBridge.requestCode()
+                                    }
+                                }
+                            }
                         }
                     }
                 }

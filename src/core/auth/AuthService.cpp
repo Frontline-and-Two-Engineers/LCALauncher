@@ -1,4 +1,5 @@
 #include "AuthService.h"
+#include "core/utils/UrlUtils.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QUrl>
@@ -12,8 +13,8 @@ AuthService::AuthService(QObject* parent)
     , m_pollTimer(new QTimer(this))
     , m_countdownTimer(new QTimer(this))
 {
-    m_baseUrl = m_settings.value("auth/baseUrl", m_baseUrl).toString();
-    m_telegramBotUsername = m_settings.value("auth/telegramBotUsername", m_telegramBotUsername).toString();
+    m_baseUrl = Utils::UrlUtils::sanitizeBaseUrl(m_settings.value("auth/baseUrl", m_baseUrl).toString());
+    m_telegramBotUsername = Utils::UrlUtils::sanitizeTelegramBot(m_settings.value("auth/telegramBotUsername", m_telegramBotUsername).toString());
 
     connect(m_pollTimer, &QTimer::timeout, this, &AuthService::pollCodeStatus);
     connect(m_countdownTimer, &QTimer::timeout, this, &AuthService::onTimerTick);
@@ -24,11 +25,7 @@ AuthService::~AuthService() {
 }
 
 void AuthService::setBaseUrl(const QString& url) {
-    QString trimmed = url.trimmed();
-    if (trimmed.endsWith('/')) {
-        trimmed.chop(1);
-    }
-    m_baseUrl = trimmed;
+    m_baseUrl = Utils::UrlUtils::sanitizeBaseUrl(url);
     m_settings.setValue("auth/baseUrl", m_baseUrl);
 }
 
@@ -37,10 +34,7 @@ QString AuthService::baseUrl() const {
 }
 
 void AuthService::setTelegramBotUsername(const QString& botUsername) {
-    m_telegramBotUsername = botUsername.trimmed();
-    if (!m_telegramBotUsername.isEmpty() && !m_telegramBotUsername.startsWith('@')) {
-        m_telegramBotUsername.prepend('@');
-    }
+    m_telegramBotUsername = Utils::UrlUtils::sanitizeTelegramBot(botUsername);
     m_settings.setValue("auth/telegramBotUsername", m_telegramBotUsername);
 }
 
@@ -67,7 +61,28 @@ void AuthService::requestCodeReplyFinished(QNetworkReply* reply) {
     reply->deleteLater();
 
     if (reply->error() != QNetworkReply::NoError) {
-        emit loginFailed(QString("Не удалось получить код: %1").arg(reply->errorString()));
+        QUrl failedUrl = reply->url();
+        int httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        QString message;
+        if (reply->error() == QNetworkReply::ConnectionRefusedError) {
+            message = QString("Не удалось подключиться к серверу (%1:%2).\n"
+                              "Убедитесь, что сервер авторизации запущен и порт открыт.")
+                          .arg(failedUrl.host())
+                          .arg(failedUrl.port(8080));
+        } else if (reply->error() == QNetworkReply::HostNotFoundError) {
+            message = QString("Сервер не найден по адресу: %1").arg(failedUrl.host());
+        } else if (reply->error() == QNetworkReply::TimeoutError) {
+            message = QString("Истекло время ожидания ответа от сервера (%1)").arg(failedUrl.toString());
+        } else if (httpCode == 404) {
+            message = QString("Эндпоинт авторизации не найден (404):\n%1\n"
+                              "Проверьте настройки URL бэкенда.")
+                          .arg(failedUrl.toString());
+        } else {
+            message = QString("Ошибка сети: %1\nURL: %2").arg(reply->errorString(), failedUrl.toString());
+        }
+
+        emit loginFailed(message);
         return;
     }
 

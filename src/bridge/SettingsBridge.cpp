@@ -1,5 +1,6 @@
 #include "SettingsBridge.h"
 #include "core/utils/FileUtils.h"
+#include "core/utils/UrlUtils.h"
 #include "core/java/JavaDetector.h"
 #include "core/java/JavaDownloader.h"
 #include "core/auth/AuthService.h"
@@ -105,10 +106,11 @@ void SettingsBridge::setAutoConnect(bool enable) {
 
 QString SettingsBridge::authUrl() const { return m_authUrl; }
 void SettingsBridge::setAuthUrl(const QString& url) {
-    if (m_authUrl != url) {
-        m_authUrl = url;
+    QString cleanUrl = Utils::UrlUtils::sanitizeBaseUrl(url);
+    if (m_authUrl != cleanUrl) {
+        m_authUrl = cleanUrl;
         if (m_authService) {
-            m_authService->setBaseUrl(url);
+            m_authService->setBaseUrl(cleanUrl);
         }
         save();
         emit settingsChanged();
@@ -117,10 +119,11 @@ void SettingsBridge::setAuthUrl(const QString& url) {
 
 QString SettingsBridge::telegramBotUsername() const { return m_telegramBotUsername; }
 void SettingsBridge::setTelegramBotUsername(const QString& username) {
-    if (m_telegramBotUsername != username) {
-        m_telegramBotUsername = username;
+    QString cleanBot = Utils::UrlUtils::sanitizeTelegramBot(username);
+    if (m_telegramBotUsername != cleanBot) {
+        m_telegramBotUsername = cleanBot;
         if (m_authService) {
-            m_authService->setTelegramBotUsername(username);
+            m_authService->setTelegramBotUsername(cleanBot);
         }
         save();
         emit settingsChanged();
@@ -129,8 +132,9 @@ void SettingsBridge::setTelegramBotUsername(const QString& username) {
 
 QString SettingsBridge::modpackUrl() const { return m_modpackUrl; }
 void SettingsBridge::setModpackUrl(const QString& url) {
-    if (m_modpackUrl != url) {
-        m_modpackUrl = url;
+    QString cleanModpack = Utils::UrlUtils::sanitizeModpackUrl(url, m_authUrl);
+    if (m_modpackUrl != cleanModpack) {
+        m_modpackUrl = cleanModpack;
         save();
         emit settingsChanged();
     }
@@ -205,9 +209,9 @@ void SettingsBridge::load() {
     m_serverAddress = m_settings.value("settings/serverAddress", m_serverAddress).toString();
     m_serverPort = m_settings.value("settings/serverPort", m_serverPort).toInt();
     m_autoConnect = m_settings.value("settings/autoConnect", m_autoConnect).toBool();
-    m_authUrl = m_settings.value("settings/authUrl", m_authUrl).toString();
-    m_telegramBotUsername = m_settings.value("settings/telegramBotUsername", m_telegramBotUsername).toString();
-    m_modpackUrl = m_settings.value("settings/modpackUrl", m_modpackUrl).toString();
+    m_authUrl = Utils::UrlUtils::sanitizeBaseUrl(m_settings.value("settings/authUrl", m_authUrl).toString());
+    m_telegramBotUsername = Utils::UrlUtils::sanitizeTelegramBot(m_settings.value("settings/telegramBotUsername", m_telegramBotUsername).toString());
+    m_modpackUrl = Utils::UrlUtils::sanitizeModpackUrl(m_settings.value("settings/modpackUrl", m_modpackUrl).toString(), m_authUrl);
     m_gameDir = m_settings.value("settings/gameDir", m_gameDir).toString();
 }
 

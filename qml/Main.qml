@@ -208,6 +208,7 @@ ApplicationWindow {
                 ConsoleView {}
                 LoginView {
                     onBackClicked: window.currentTabIndex = 0
+                    onOpenSettingsRequested: window.currentTabIndex = 1
                 }
             }
         }

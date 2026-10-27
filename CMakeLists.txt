@@ -70,6 +70,7 @@ qt_add_executable(LCALauncher
     src/core/utils/FileUtils.cpp
     src/core/utils/HashUtils.h
     src/core/utils/HashUtils.cpp
+    src/core/utils/UrlUtils.h
 
     # Core - Auth
     src/core/auth/UserSession.h
