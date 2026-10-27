@@ -20,18 +20,22 @@ ClientDownloader::~ClientDownloader() {
 bool ClientDownloader::isClientInstalled(const QString& launcherDataDir) {
     if (launcherDataDir.isEmpty()) return false;
 
-    // 1. Check for client jar (either NeoForge or Vanilla 1.21.1)
-    bool hasClientJar = QFile::exists(launcherDataDir + "/versions/1.21.1-neoforge/1.21.1-neoforge.jar") ||
-                        QFile::exists(launcherDataDir + "/versions/1.21.1/1.21.1.jar");
-    if (!hasClientJar) return false;
-
-    // 2. Check for libraries directory containing .jar files
+    // 1. Check for libraries directory containing .jar files
     QString libDir = launcherDataDir + "/libraries";
     if (!QDir(libDir).exists()) return false;
 
     QDirIterator it(libDir, QStringList() << "*.jar", QDir::Files, QDirIterator::Subdirectories);
     if (!it.hasNext()) {
         return false; // Libraries directory is empty
+    }
+
+    // 2. Check for client version jar inside versions/
+    QDir versionsDir(launcherDataDir + "/versions");
+    if (!versionsDir.exists()) return false;
+
+    QDirIterator vIt(versionsDir.path(), QStringList() << "*.jar", QDir::Files, QDirIterator::Subdirectories);
+    if (!vIt.hasNext()) {
+        return false; // No version jar found
     }
 
     return true;
@@ -156,9 +160,36 @@ void ClientDownloader::onReplyFinished() {
         return;
     }
 
+    // Auto-unwrap if archive had an enclosing root folder (e.g. client-base/...)
+    if (!QDir(m_launcherDataDir + "/versions").exists() || !QDir(m_launcherDataDir + "/libraries").exists()) {
+        QDir baseDir(m_launcherDataDir);
+        QStringList subdirs = baseDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString& sub : subdirs) {
+            if (sub == "temp" || sub == "runtime" || sub == "game") continue;
+            QString subPath = baseDir.filePath(sub);
+            if (QDir(subPath + "/versions").exists() || QDir(subPath + "/libraries").exists()) {
+                // Move all items from subPath up into m_launcherDataDir
+                QDir nestedDir(subPath);
+                QStringList entries = nestedDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const QString& entry : entries) {
+                    QString src = nestedDir.filePath(entry);
+                    QString dst = baseDir.filePath(entry);
+                    if (QFileInfo(src).isDir()) {
+                        Utils::FileUtils::removeDir(dst);
+                    } else {
+                        Utils::FileUtils::removeFile(dst);
+                    }
+                    QFile::rename(src, dst);
+                }
+                nestedDir.removeRecursively();
+                break;
+            }
+        }
+    }
+
     // Verify presence
     if (!isClientInstalled(m_launcherDataDir)) {
-        emit downloadFinished(false, "Распакованный архив не содержит versions/ или libraries/");
+        emit downloadFinished(false, "Распакованный архив не содержит папок versions/ или libraries/");
         return;
     }
 

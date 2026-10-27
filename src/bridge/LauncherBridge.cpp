@@ -230,12 +230,14 @@ void LauncherBridge::doActualGameLaunch() {
     m_statusText = "Сборка аргументов запуска NeoForge 1.21.1...";
     emit statusChanged();
 
+    QString baseDataDir = Utils::FileUtils::defaultLauncherDataDir();
+
     Launch::LaunchConfig config;
     config.javaPath = m_settings->javaPath();
     config.ramMb = m_settings->ramMb();
     config.gameDir = m_settings->gameDir();
-    config.assetsDir = Utils::FileUtils::defaultLauncherDataDir() + "/assets";
-    config.nativesDir = Utils::FileUtils::defaultLauncherDataDir() + "/natives/1.21.1";
+    config.assetsDir = baseDataDir + "/assets";
+    config.nativesDir = baseDataDir + "/natives/1.21.1";
     config.assetIndex = "17";
     config.versionId = "1.21.1-neoforge";
     config.session = m_authService->currentSession();
@@ -243,16 +245,52 @@ void LauncherBridge::doActualGameLaunch() {
     config.serverAddress = m_settings->serverAddress();
     config.serverPort = m_settings->serverPort();
 
+    // Dynamically locate version jar, version id and version json
+    QString versionsDir = baseDataDir + "/versions";
+    QString clientJar;
+    QString versionJson;
+
+    QDir vDir(versionsDir);
+    if (vDir.exists()) {
+        QStringList subdirs = vDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString& sub : subdirs) {
+            QDir subDir(vDir.filePath(sub));
+            QString candidateJar = subDir.filePath(sub + ".jar");
+            if (QFile::exists(candidateJar)) {
+                clientJar = candidateJar;
+                config.versionId = sub;
+                versionJson = subDir.filePath(sub + ".json");
+                break;
+            }
+            QStringList jars = subDir.entryList(QStringList() << "*.jar", QDir::Files);
+            if (!jars.isEmpty()) {
+                clientJar = subDir.filePath(jars.first());
+                config.versionId = sub;
+                QStringList jsons = subDir.entryList(QStringList() << "*.json", QDir::Files);
+                if (!jsons.isEmpty()) {
+                    versionJson = subDir.filePath(jsons.first());
+                }
+                break;
+            }
+        }
+    }
+
     // Authlib injector path
-    config.authlibInjectorPath = Utils::FileUtils::defaultLauncherDataDir() + "/authlib-injector.jar";
+    QString authlibPath = baseDataDir + "/authlib-injector.jar";
+    if (!QFile::exists(authlibPath)) {
+        QDirIterator aIt(baseDataDir, QStringList() << "authlib-injector*.jar", QDir::Files, QDirIterator::Subdirectories);
+        if (aIt.hasNext()) {
+            authlibPath = aIt.next();
+        }
+    }
+    config.authlibInjectorPath = authlibPath;
     config.authServerYggdrasilUrl = m_settings->authUrl();
 
     // Default NeoForge main class
     config.mainClass = "cpw.mods.bootstraplauncher.BootstrapLauncher";
 
     // Read version JSON if present to get exact mainClass and assetIndex
-    QString versionJson = Utils::FileUtils::defaultLauncherDataDir() + "/versions/1.21.1-neoforge/1.21.1-neoforge.json";
-    if (QFile::exists(versionJson)) {
+    if (!versionJson.isEmpty() && QFile::exists(versionJson)) {
         QFile file(versionJson);
         if (file.open(QIODevice::ReadOnly)) {
             QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
@@ -263,13 +301,15 @@ void LauncherBridge::doActualGameLaunch() {
                 }
                 if (obj.contains("assetIndex") && obj["assetIndex"].isObject()) {
                     config.assetIndex = obj["assetIndex"].toObject()["id"].toString("17");
+                } else if (obj.contains("assets")) {
+                    config.assetIndex = obj["assets"].toString("17");
                 }
             }
         }
     }
 
     // Gather classpath and module-path
-    QString librariesDir = Utils::FileUtils::defaultLauncherDataDir() + "/libraries";
+    QString librariesDir = baseDataDir + "/libraries";
     QDir libDir(librariesDir);
     if (libDir.exists()) {
         QDirIterator it(librariesDir, QStringList() << "*.jar", QDir::Files, QDirIterator::Subdirectories);
@@ -288,12 +328,8 @@ void LauncherBridge::doActualGameLaunch() {
         }
     }
 
-    // Client jar
-    QString clientJar = Utils::FileUtils::defaultLauncherDataDir() + "/versions/1.21.1-neoforge/1.21.1-neoforge.jar";
-    if (!QFile::exists(clientJar)) {
-        clientJar = Utils::FileUtils::defaultLauncherDataDir() + "/versions/1.21.1/1.21.1.jar";
-    }
-    if (QFile::exists(clientJar)) {
+    // Append client jar if found
+    if (!clientJar.isEmpty() && QFile::exists(clientJar)) {
         config.classpath.append(clientJar);
     }
 
