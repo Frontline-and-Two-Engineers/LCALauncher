@@ -23,10 +23,11 @@ QStringList ArgumentBuilder::buildJvmArguments(const LaunchConfig& config) {
     args << "-Dminecraft.launcher.brand=LCALauncher";
     args << "-Dminecraft.launcher.version=1.0.0";
     if (!config.nativesDir.isEmpty()) {
-        args << QString("-Djava.library.path=%1").arg(config.nativesDir);
-        args << QString("-Djna.tmpdir=%1").arg(config.nativesDir);
-        args << QString("-Dorg.lwjgl.system.SharedLibraryExtractPath=%1").arg(config.nativesDir);
-        args << QString("-Dio.netty.native.workdir=%1").arg(config.nativesDir);
+        QString nativeDir = QDir::toNativeSeparators(config.nativesDir);
+        args << QString("-Djava.library.path=%1").arg(nativeDir);
+        args << QString("-Djna.tmpdir=%1").arg(nativeDir);
+        args << QString("-Dorg.lwjgl.system.SharedLibraryExtractPath=%1").arg(nativeDir);
+        args << QString("-Dio.netty.native.workdir=%1").arg(nativeDir);
     }
 
 #if defined(Q_OS_MACOS) || defined(Q_OS_APPLE)
@@ -37,12 +38,12 @@ QStringList ArgumentBuilder::buildJvmArguments(const LaunchConfig& config) {
     if (!config.authlibInjectorPath.isEmpty() && QFile::exists(config.authlibInjectorPath) &&
         !config.authServerYggdrasilUrl.isEmpty() && config.session.userType == "custom") {
         args << QString("-javaagent:%1=%2")
-                    .arg(config.authlibInjectorPath, config.authServerYggdrasilUrl);
+                    .arg(QDir::toNativeSeparators(config.authlibInjectorPath), config.authServerYggdrasilUrl);
     }
 
     // 5. NeoForge 1.21.1 module-path & JVM reflection arguments
     if (!config.librariesDir.isEmpty()) {
-        args << QString("-DlibraryDirectory=%1").arg(config.librariesDir);
+        args << QString("-DlibraryDirectory=%1").arg(QDir::toNativeSeparators(config.librariesDir));
     }
     args << QString("-DignoreList=client-extra,%1.jar").arg(config.versionId);
     args << "-Djava.net.preferIPv6Addresses=system";
@@ -50,10 +51,13 @@ QStringList ArgumentBuilder::buildJvmArguments(const LaunchConfig& config) {
     if (!config.modulePath.isEmpty()) {
 #ifdef Q_OS_WIN
         const QString sep = ";";
+        QStringList nativeMp;
+        for (const QString& p : config.modulePath) nativeMp.append(QDir::toNativeSeparators(p));
+        args << "-p" << nativeMp.join(sep);
 #else
         const QString sep = ":";
-#endif
         args << "-p" << config.modulePath.join(sep);
+#endif
         args << "--add-modules" << "ALL-MODULE-PATH";
         args << "--add-opens" << "java.base/java.util.jar=cpw.mods.securejarhandler";
         args << "--add-opens" << "java.base/java.lang.invoke=cpw.mods.securejarhandler";
@@ -68,10 +72,13 @@ QStringList ArgumentBuilder::buildJvmArguments(const LaunchConfig& config) {
     if (!config.classpath.isEmpty()) {
 #ifdef Q_OS_WIN
         const QString sep = ";";
+        QStringList nativeCp;
+        for (const QString& p : config.classpath) nativeCp.append(QDir::toNativeSeparators(p));
+        args << "-cp" << nativeCp.join(sep);
 #else
         const QString sep = ":";
-#endif
         args << "-cp" << config.classpath.join(sep);
+#endif
     }
 
     return args;
@@ -82,8 +89,8 @@ QStringList ArgumentBuilder::buildGameArguments(const LaunchConfig& config) {
 
     args << "--username" << (config.session.username.isEmpty() ? "Player" : config.session.username);
     args << "--version" << config.versionId;
-    args << "--gameDir" << config.gameDir;
-    args << "--assetsDir" << config.assetsDir;
+    args << "--gameDir" << QDir::toNativeSeparators(config.gameDir);
+    args << "--assetsDir" << QDir::toNativeSeparators(config.assetsDir);
     args << "--assetIndex" << config.assetIndex;
     args << "--uuid" << config.session.uuid;
     args << "--accessToken" << (config.session.accessToken.isEmpty() ? "0" : config.session.accessToken);

@@ -3,6 +3,8 @@
 #include "core/java/JavaDetector.h"
 #include "core/java/JavaDownloader.h"
 #include "core/client/ClientDownloader.h"
+#include "core/downloader/DownloadManager.h"
+#include <QSysInfo>
 #include <QDir>
 #include <QDirIterator>
 #include <QJsonDocument>
@@ -198,7 +200,7 @@ void LauncherBridge::checkClientAndProceed() {
             }
 
             appendLog("[Клиент] Базовый клиент 1.21.1 NeoForge успешно распакован и готов!");
-            startModpackSync();
+            checkNativesAndProceed();
         });
 
         clientDownloader->startDownload(m_settings->clientBaseUrl(), dataDir);
@@ -206,7 +208,83 @@ void LauncherBridge::checkClientAndProceed() {
     }
 
     appendLog("[Клиент] Базовый клиент 1.21.1 NeoForge проверен и готов.");
-    startModpackSync();
+    checkNativesAndProceed();
+}
+
+void LauncherBridge::checkNativesAndProceed() {
+    QString librariesDir = Utils::FileUtils::defaultLauncherDataDir() + "/libraries";
+
+    struct NativeItem {
+        QString relPath;
+        QString url;
+    };
+
+    QList<NativeItem> requiredItems;
+    const QStringList modules = {
+        "lwjgl", "lwjgl-glfw", "lwjgl-jemalloc", "lwjgl-openal",
+        "lwjgl-opengl", "lwjgl-stb", "lwjgl-tinyfd", "lwjgl-freetype"
+    };
+
+#if defined(Q_OS_WIN)
+    const QString classifier = "natives-windows";
+    for (const QString& mod : modules) {
+        QString rel = QString("org/lwjgl/%1/3.3.3/%1-3.3.3-%2.jar").arg(mod, classifier);
+        requiredItems.append(NativeItem{rel, "https://libraries.minecraft.net/" + rel});
+    }
+#elif defined(Q_OS_MACOS) || defined(Q_OS_APPLE)
+    QString arch = QSysInfo::currentCpuArchitecture().toLower();
+    QString classifier = (arch == "arm64" || arch == "aarch64") ? "natives-macos-arm64" : "natives-macos";
+    for (const QString& mod : modules) {
+        QString rel = QString("org/lwjgl/%1/3.3.3/%1-3.3.3-%2.jar").arg(mod, classifier);
+        requiredItems.append(NativeItem{rel, "https://libraries.minecraft.net/" + rel});
+    }
+    requiredItems.append(NativeItem{
+        "ca/weblite/java-objc-bridge/1.1/java-objc-bridge-1.1.jar",
+        "https://libraries.minecraft.net/ca/weblite/java-objc-bridge/1.1/java-objc-bridge-1.1.jar"
+    });
+#else
+    // Linux
+    const QString classifier = "natives-linux";
+    for (const QString& mod : modules) {
+        QString rel = QString("org/lwjgl/%1/3.3.3/%1-3.3.3-%2.jar").arg(mod, classifier);
+        requiredItems.append(NativeItem{rel, "https://libraries.minecraft.net/" + rel});
+    }
+#endif
+
+    QList<Downloader::DownloadTask> tasks;
+    for (const auto& item : requiredItems) {
+        QString fullPath = librariesDir + "/" + item.relPath;
+        if (!QFile::exists(fullPath)) {
+            Downloader::DownloadTask t;
+            t.url = QUrl(item.url);
+            t.destinationPath = fullPath;
+            t.description = QFileInfo(fullPath).fileName();
+            tasks.append(t);
+        }
+    }
+
+    if (tasks.isEmpty()) {
+        startModpackSync();
+        return;
+    }
+
+    appendLog(QString("[Клиент] Обнаружены отсутствующие нативные библиотеки для ОС (%1 шт.). Загрузка с Mojang CDN...")
+                  .arg(tasks.size()));
+    m_statusText = "Загрузка нативных библиотек платформы...";
+    emit statusChanged();
+
+    auto nativeDownloader = new Downloader::DownloadManager(4, this);
+    connect(nativeDownloader, &Downloader::DownloadManager::allFinished, this, [this, nativeDownloader]() {
+        nativeDownloader->deleteLater();
+        appendLog("[Клиент] Нативные библиотеки платформы успешно установлены.");
+        startModpackSync();
+    });
+    connect(nativeDownloader, &Downloader::DownloadManager::taskFailed, this, [this](const QString& dest, const QString& err) {
+        appendLog(QString("[Клиент ПРЕДУПРЕЖДЕНИЕ] Не удалось загрузить %1: %2").arg(dest, err));
+    });
+
+    nativeDownloader->addTasks(tasks);
+    nativeDownloader->start();
 }
 
 void LauncherBridge::startModpackSync() {

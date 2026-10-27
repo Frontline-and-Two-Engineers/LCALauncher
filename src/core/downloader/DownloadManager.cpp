@@ -100,6 +100,7 @@ void DownloadManager::processQueue() {
 
         QNetworkRequest request(task.url);
         request.setRawHeader("User-Agent", "LCALauncher/1.0");
+        request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
 
         QNetworkReply* reply = m_network.get(request);
         m_activeTasks.insert(reply, task);

@@ -50,6 +50,7 @@ private:
     void appendLog(const QString& line);
     void checkJavaAndProceed();
     void checkClientAndProceed();
+    void checkNativesAndProceed();
     void startModpackSync();
     void doActualGameLaunch();
 
