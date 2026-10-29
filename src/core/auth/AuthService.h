@@ -26,9 +26,6 @@ public:
     void requestCode();
     void cancelCodePolling();
 
-    // Offline fallback
-    void loginOffline(const QString& username);
-
     // Session management
     void validateSession();
     void logout();

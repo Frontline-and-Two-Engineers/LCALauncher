@@ -46,7 +46,6 @@ public:
     Q_INVOKABLE void cancelCode();
     Q_INVOKABLE void copyCodeToClipboard();
     Q_INVOKABLE void openTelegramBot();
-    Q_INVOKABLE void loginOffline(const QString& username);
     Q_INVOKABLE void logout();
 
 signals:

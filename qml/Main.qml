@@ -227,7 +227,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                             }
                             Text {
-                                text: authBridge.isLoggedIn ? (authBridge.userType === "custom" ? "Аккаунт сервера" : "Оффлайн") : "Нажмите для входа"
+                                text: authBridge.isLoggedIn ? "Аккаунт сервера" : "Нажмите для входа"
                                 color: authBridge.isLoggedIn ? "#00FFA3" : "#FFB300"
                                 font.pixelSize: 11
                             }

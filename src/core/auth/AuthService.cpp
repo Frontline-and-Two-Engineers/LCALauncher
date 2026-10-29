@@ -183,32 +183,9 @@ void AuthService::cancelCodePolling() {
     m_remainingSeconds = 0;
 }
 
-void AuthService::loginOffline(const QString& username) {
-    if (username.trimmed().isEmpty()) {
-        emit loginFailed("Имя пользователя не может быть пустым");
-        return;
-    }
-
-    cancelCodePolling();
-    emit loginStarted();
-
-    m_session.username = username.trimmed();
-    m_session.uuid = UserSession::generateOfflineUuid(m_session.username);
-    m_session.accessToken = "offline_token_" + m_session.uuid;
-    m_session.userType = "offline";
-    m_session.isLoggedIn = true;
-
-    saveSession(m_session);
-    emit loginSuccess(m_session);
-}
-
 void AuthService::validateSession() {
-    if (!m_session.isLoggedIn || m_session.accessToken.isEmpty()) {
-        return;
-    }
-
-    if (m_session.userType == "offline" || m_session.accessToken.startsWith("offline_token_")) {
-        emit loginSuccess(m_session);
+    if (!m_session.isLoggedIn || m_session.accessToken.isEmpty() || m_session.userType == "offline" || m_session.accessToken.startsWith("offline_token_")) {
+        clearSavedSession();
         return;
     }
 
@@ -279,6 +256,11 @@ void AuthService::restoreSavedSession() {
     m_session.accessToken = m_settings.value("session/accessToken").toString();
     m_session.userType = m_settings.value("session/userType", "custom").toString();
     m_session.isLoggedIn = true;
+
+    if (m_session.userType == "offline" || m_session.accessToken.startsWith("offline_token_") || m_session.accessToken.isEmpty()) {
+        clearSavedSession();
+        return;
+    }
 
     validateSession();
 }

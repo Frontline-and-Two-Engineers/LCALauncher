@@ -154,10 +154,6 @@ void AuthBridge::openTelegramBot() {
     }
 }
 
-void AuthBridge::loginOffline(const QString& username) {
-    m_authService->loginOffline(username);
-}
-
 void AuthBridge::logout() {
     m_authService->logout();
 }

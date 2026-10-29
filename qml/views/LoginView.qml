@@ -9,7 +9,6 @@ Item {
     signal backClicked()
     signal openSettingsRequested()
 
-    property bool isOfflineMode: false
     property bool isCopiedNotification: false
 
     Timer {
@@ -19,7 +18,7 @@ Item {
     }
 
     Component.onCompleted: {
-        if (!authBridge.isLoggedIn && !authBridge.isPolling && !root.isOfflineMode) {
+        if (!authBridge.isLoggedIn && !authBridge.isPolling) {
             authBridge.requestCode()
         }
     }
@@ -53,7 +52,7 @@ Item {
                     spacing: 6
 
                     Text {
-                        text: root.isOfflineMode ? "Оффлайн вход" : "Вход через Telegram"
+                        text: authBridge.isLoggedIn ? "Профиль игрока" : "Вход через Telegram"
                         color: "#FFFFFF"
                         font.pixelSize: 26
                         font.bold: true
@@ -61,9 +60,9 @@ Item {
                     }
 
                     Text {
-                        text: root.isOfflineMode 
-                              ? "Локальный запуск без подключения к серверу"
-                              : "Привязка лаунчера через бота " + authBridge.telegramBotUsername
+                        text: authBridge.isLoggedIn 
+                              ? "Лаунчер привязан к вашей учетной записи"
+                              : ("Привязка лаунчера через бота " + authBridge.telegramBotUsername)
                         color: "#8B95AB"
                         font.pixelSize: 13
                         Layout.alignment: Qt.AlignHCenter
@@ -79,7 +78,7 @@ Item {
                     color: "#2B1417"
                     border.color: "#FF453A"
                     border.width: 1
-                    visible: authBridge.errorMessage !== ""
+                    visible: authBridge.errorMessage !== "" && !authBridge.isLoggedIn
 
                     RowLayout {
                         id: errorLayout
@@ -183,11 +182,114 @@ Item {
                     }
                 }
 
+                // ================= Logged In Profile View =================
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 20
+                    visible: authBridge.isLoggedIn
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 160
+                        radius: 16
+                        color: "#990F1322"
+                        border.color: "#30FFFFFF"
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 20
+                            spacing: 12
+
+                            RowLayout {
+                                spacing: 14
+                                Layout.alignment: Qt.AlignHCenter
+
+                                Rectangle {
+                                    width: 44
+                                    height: 44
+                                    radius: 22
+                                    color: "#00FFA3"
+
+                                    LCAIcon {
+                                        anchors.centerIn: parent
+                                        source: "qrc:/qt/qml/LCALauncher/assets/icons/user.svg"
+                                        size: 24
+                                        color: "#0D1117"
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    spacing: 4
+
+                                    Text {
+                                        text: authBridge.username
+                                        color: "#FFFFFF"
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                    }
+
+                                    RowLayout {
+                                        spacing: 6
+
+                                        Rectangle {
+                                            width: 8
+                                            height: 8
+                                            radius: 4
+                                            color: "#00FFA3"
+                                        }
+
+                                        Text {
+                                            text: "Авторизован через Telegram"
+                                            color: "#00FFA3"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+                                    }
+                                }
+                            }
+
+                            Text {
+                                text: "UUID: " + authBridge.uuid
+                                color: "#7E879E"
+                                font.pixelSize: 11
+                                font.family: "JetBrains Mono, Menlo, Consolas, monospace"
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        LCAButton {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 46
+                            isPrimary: true
+                            accentColor: "#00E5FF"
+                            textColor: "#0C0F17"
+                            text: "Вернуться на главную"
+                            onClicked: root.backClicked()
+                        }
+
+                        LCAButton {
+                            Layout.preferredWidth: 160
+                            Layout.preferredHeight: 46
+                            text: "Выйти из аккаунта"
+                            onClicked: {
+                                authBridge.logout()
+                                authBridge.requestCode()
+                            }
+                        }
+                    }
+                }
+
                 // ================= Telegram Code Mode =================
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 20
-                    visible: !root.isOfflineMode
+                    visible: !authBridge.isLoggedIn
 
                     // Big Code Container Card
                     Rectangle {
@@ -337,67 +439,20 @@ Item {
                             onClicked: authBridge.requestCode()
                         }
                     }
-                }
 
-                // ================= Offline Mode =================
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 16
-                    visible: root.isOfflineMode
-
-                    ColumnLayout {
+                    // Back button row
+                    RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 12
 
-                        Text {
-                            text: "Игровой никнейм (без пароля)"
-                            color: "#A2ABBF"
-                            font.pixelSize: 12
+                        Item { Layout.fillWidth: true }
+
+                        LCAButton {
+                            Layout.preferredWidth: 110
+                            Layout.preferredHeight: 38
+                            text: "Назад"
+                            onClicked: root.backClicked()
                         }
-                        LCATextField {
-                            id: offlineUsernameField
-                            Layout.fillWidth: true
-                            placeholderText: "Например: Player"
-                            text: authBridge.username
-                        }
-                    }
-
-                    LCAButton {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 46
-                        isPrimary: true
-                        accentColor: "#00FFA3"
-                        textColor: "#0C0F17"
-                        text: "Войти в оффлайн режиме"
-                        onClicked: authBridge.loginOffline(offlineUsernameField.text)
-                    }
-                }
-
-                // Mode switch & Back button
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    LCAButton {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 38
-                        iconSource: root.isOfflineMode ? "qrc:/qt/qml/LCALauncher/assets/icons/arrow-left.svg" : ""
-                        iconSize: 14
-                        text: root.isOfflineMode ? "Войти через Telegram" : "Режим без интернета (Оффлайн)"
-                        onClicked: {
-                            root.isOfflineMode = !root.isOfflineMode
-                            if (!root.isOfflineMode && !authBridge.isPolling) {
-                                authBridge.requestCode()
-                            }
-                        }
-                    }
-
-                    LCAButton {
-                        Layout.preferredWidth: 110
-                        Layout.preferredHeight: 38
-                        text: "Назад"
-                        visible: authBridge.isLoggedIn
-                        onClicked: root.backClicked()
                     }
                 }
             }
