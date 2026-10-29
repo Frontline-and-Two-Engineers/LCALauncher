@@ -118,6 +118,8 @@ qt_add_executable(LCALauncher
     src/bridge/LauncherBridge.cpp
     src/bridge/ServerStatusBridge.h
     src/bridge/ServerStatusBridge.cpp
+    src/bridge/ChannelPostsBridge.h
+    src/bridge/ChannelPostsBridge.cpp
 )
 
 qt_add_qml_module(LCALauncher
