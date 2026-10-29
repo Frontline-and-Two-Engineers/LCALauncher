@@ -26,6 +26,7 @@ class SettingsBridge : public QObject {
     Q_PROPERTY(QString modpackUrl READ modpackUrl WRITE setModpackUrl NOTIFY settingsChanged)
     Q_PROPERTY(QString clientBaseUrl READ clientBaseUrl WRITE setClientBaseUrl NOTIFY settingsChanged)
     Q_PROPERTY(QString gameDir READ gameDir WRITE setGameDir NOTIFY settingsChanged)
+    Q_PROPERTY(bool isDevMode READ isDevMode CONSTANT)
     Q_PROPERTY(QString detectedJavaInfo READ detectedJavaInfo NOTIFY javaInfoChanged)
     Q_PROPERTY(bool isDownloadingJava READ isDownloadingJava NOTIFY javaDownloadingChanged)
     Q_PROPERTY(double javaDownloadProgress READ javaDownloadProgress NOTIFY javaDownloadingChanged)
@@ -63,6 +64,8 @@ public:
     QString gameDir() const;
     void setGameDir(const QString& dir);
 
+    bool isDevMode() const;
+
     QString detectedJavaInfo() const;
     bool isDownloadingJava() const;
     double javaDownloadProgress() const;
@@ -93,6 +96,7 @@ private:
     QString m_modpackUrl{"http://localhost:8080/api/modpack/manifest.json"};
     QString m_clientBaseUrl{"http://localhost:8080/api/modpack/files/client-base.zip"};
     QString m_gameDir;
+    bool m_isDevMode{false};
     QString m_detectedJavaInfo;
     Java::JavaDownloader* m_javaDownloader{nullptr};
     bool m_isDownloadingJava{false};

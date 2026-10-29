@@ -1,4 +1,5 @@
 #include "SettingsBridge.h"
+#include <QCoreApplication>
 #include "core/utils/FileUtils.h"
 #include "core/utils/UrlUtils.h"
 #include "core/java/JavaDetector.h"
@@ -39,6 +40,8 @@ SettingsBridge::SettingsBridge(Auth::AuthService* authService, QObject* parent)
     });
 
     m_gameDir = Utils::FileUtils::defaultGameDir();
+    const QStringList args = QCoreApplication::arguments();
+    m_isDevMode = args.contains(QStringLiteral("--dev")) || args.contains(QStringLiteral("-dev"));
     load();
 
     if (m_authService) {
@@ -157,6 +160,10 @@ void SettingsBridge::setGameDir(const QString& dir) {
         save();
         emit settingsChanged();
     }
+}
+
+bool SettingsBridge::isDevMode() const {
+    return m_isDevMode;
 }
 
 QString SettingsBridge::detectedJavaInfo() const {

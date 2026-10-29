@@ -20,11 +20,37 @@ Item {
                 width: parent.width
                 spacing: 24
 
-                Text {
-                    text: "Настройки лаунчера"
-                    color: "#FFFFFF"
-                    font.pixelSize: 26
-                    font.bold: true
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    Text {
+                        text: "Настройки лаунчера"
+                        color: "#FFFFFF"
+                        font.pixelSize: 26
+                        font.bold: true
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Rectangle {
+                        visible: settingsBridge.isDevMode
+                        Layout.preferredHeight: 28
+                        Layout.preferredWidth: devModeLabel.implicitWidth + 24
+                        radius: 6
+                        color: "#26FF9100"
+                        border.color: "#FF9100"
+                        border.width: 1
+
+                        Text {
+                            id: devModeLabel
+                            anchors.centerIn: parent
+                            text: "DEV MODE"
+                            color: "#FF9100"
+                            font.pixelSize: 11
+                            font.bold: true
+                        }
+                    }
                 }
 
                 // 1. RAM Section
@@ -135,6 +161,7 @@ Item {
 
                 // 3. Network & Server Section
                 Rectangle {
+                    visible: settingsBridge.isDevMode
                     Layout.fillWidth: true
                     Layout.preferredHeight: 220
                     radius: 14
@@ -221,6 +248,7 @@ Item {
 
                 // 4. Backend & Telegram Bot Section
                 Rectangle {
+                    visible: settingsBridge.isDevMode
                     Layout.fillWidth: true
                     implicitHeight: backendColumn.implicitHeight + 40
                     radius: 14
@@ -293,11 +321,24 @@ Item {
                                 onEditingFinished: settingsBridge.clientBaseUrl = text
                             }
                         }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Text { text: "Рабочая папка игры"; color: "#8E98B0"; font.pixelSize: 12 }
+                            LCATextField {
+                                Layout.fillWidth: true
+                                text: settingsBridge.gameDir
+                                placeholderText: "Путь к папке игры"
+                                onEditingFinished: settingsBridge.gameDir = text
+                            }
+                        }
                     }
                 }
 
                 // 5. Reset & Defaults
                 RowLayout {
+                    visible: settingsBridge.isDevMode
                     Layout.fillWidth: true
                     Item { Layout.fillWidth: true }
                     LCAButton {
