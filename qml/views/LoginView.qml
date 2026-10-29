@@ -87,9 +87,10 @@ Item {
                         anchors.margins: 12
                         spacing: 12
 
-                        Text {
-                            text: "⚠️"
-                            font.pixelSize: 20
+                        LCAIcon {
+                            source: "qrc:/qt/qml/LCALauncher/assets/icons/warning.svg"
+                            size: 20
+                            color: "#FF453A"
                             Layout.alignment: Qt.AlignTop
                         }
 
@@ -108,13 +109,32 @@ Item {
                             }
 
                             RowLayout {
-                                spacing: 14
+                                spacing: 16
 
-                                Text {
-                                    text: "⚙️ Настройки сервера"
-                                    color: "#00E5FF"
-                                    font.pixelSize: 12
-                                    font.underline: settingsMouse.containsMouse
+                                Item {
+                                    implicitWidth: settingsRow.implicitWidth
+                                    implicitHeight: settingsRow.implicitHeight
+
+                                    Row {
+                                        id: settingsRow
+                                        anchors.fill: parent
+                                        spacing: 6
+
+                                        LCAIcon {
+                                            source: "qrc:/qt/qml/LCALauncher/assets/icons/settings.svg"
+                                            size: 13
+                                            color: "#00E5FF"
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+
+                                        Text {
+                                            text: "Настройки сервера"
+                                            color: "#00E5FF"
+                                            font.pixelSize: 12
+                                            font.underline: settingsMouse.containsMouse
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
 
                                     MouseArea {
                                         id: settingsMouse
@@ -125,11 +145,30 @@ Item {
                                     }
                                 }
 
-                                Text {
-                                    text: "🔄 Повторить попытку"
-                                    color: "#00FFA3"
-                                    font.pixelSize: 12
-                                    font.underline: retryMouse.containsMouse
+                                Item {
+                                    implicitWidth: retryRow.implicitWidth
+                                    implicitHeight: retryRow.implicitHeight
+
+                                    Row {
+                                        id: retryRow
+                                        anchors.fill: parent
+                                        spacing: 6
+
+                                        LCAIcon {
+                                            source: "qrc:/qt/qml/LCALauncher/assets/icons/refresh.svg"
+                                            size: 13
+                                            color: "#00FFA3"
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+
+                                        Text {
+                                            text: "Повторить попытку"
+                                            color: "#00FFA3"
+                                            font.pixelSize: 12
+                                            font.underline: retryMouse.containsMouse
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
 
                                     MouseArea {
                                         id: retryMouse
@@ -190,7 +229,11 @@ Item {
                                 LCAButton {
                                     Layout.preferredWidth: 40
                                     Layout.preferredHeight: 40
-                                    text: root.isCopiedNotification ? "✓" : "📋"
+                                    iconSource: root.isCopiedNotification 
+                                        ? "qrc:/qt/qml/LCALauncher/assets/icons/check.svg" 
+                                        : "qrc:/qt/qml/LCALauncher/assets/icons/copy.svg"
+                                    iconSize: 18
+                                    iconColor: root.isCopiedNotification ? "#00FFA3" : "#FFFFFF"
                                     enabled: authBridge.authCode !== "" && !authBridge.isCodeExpired
                                     onClicked: {
                                         authBridge.copyCodeToClipboard()
@@ -277,14 +320,19 @@ Item {
                             isPrimary: true
                             accentColor: "#00E5FF"
                             textColor: "#0C0F17"
-                            text: "✈️ Открыть бота в Telegram"
+                            iconSource: "qrc:/qt/qml/LCALauncher/assets/icons/telegram.svg"
+                            iconColor: "#0C0F17"
+                            iconSize: 18
+                            text: "Открыть бота в Telegram"
                             onClicked: authBridge.openTelegramBot()
                         }
 
                         LCAButton {
                             Layout.preferredWidth: 150
                             Layout.preferredHeight: 46
-                            text: authBridge.isBusy ? "Запрос..." : "🔄 Новый код"
+                            iconSource: authBridge.isBusy ? "" : "qrc:/qt/qml/LCALauncher/assets/icons/refresh.svg"
+                            iconSize: 15
+                            text: authBridge.isBusy ? "Запрос..." : "Новый код"
                             enabled: !authBridge.isBusy
                             onClicked: authBridge.requestCode()
                         }
@@ -333,7 +381,9 @@ Item {
                     LCAButton {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 38
-                        text: root.isOfflineMode ? "← Войти через Telegram" : "Режим без интернета (Оффлайн)"
+                        iconSource: root.isOfflineMode ? "qrc:/qt/qml/LCALauncher/assets/icons/arrow-left.svg" : ""
+                        iconSize: 14
+                        text: root.isOfflineMode ? "Войти через Telegram" : "Режим без интернета (Оффлайн)"
                         onClicked: {
                             root.isOfflineMode = !root.isOfflineMode
                             if (!root.isOfflineMode && !authBridge.isPolling) {

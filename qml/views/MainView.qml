@@ -10,16 +10,7 @@ Item {
         anchors.fill: parent
         color: "transparent"
 
-        // Background decorative glow
-        Rectangle {
-            width: 450
-            height: 450
-            radius: 225
-            color: "#1800E5FF"
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: -100
-        }
+
 
         // Main layout
         ColumnLayout {
@@ -82,14 +73,14 @@ Item {
                             }
 
                             Text {
-                                text: "Live, Camera, Action!"
+                                text: "Light, Camera, Action!"
                                 color: "#FFFFFF"
                                 font.pixelSize: 32
                                 font.bold: true
                             }
 
                             Text {
-                                text: "Live, Camera, Action! 3 СЕЗОН | FROSTY WINTER\nПри поддержке dead_seniordev"
+                                text: "Light, Camera, Action! 3 СЕЗОН | FROSTY WINTER\nПри поддержке dead_seniordev"
                                 color: "#9EA8C2"
                                 font.pixelSize: 14
                                 elide: Text.ElideRight
@@ -134,12 +125,12 @@ Item {
                                         font.pixelSize: 11
                                     }
 
-                                    Text {
-                                        text: "↻"
+                                    LCAIcon {
+                                        source: "qrc:/qt/qml/LCALauncher/assets/icons/refresh.svg"
+                                        size: 11
                                         color: serverStatusBridge.isChecking ? "#00E5FF" : "#555E75"
-                                        font.pixelSize: 12
-                                        font.bold: true
                                         rotation: serverStatusBridge.isChecking ? refreshAnim.angle : 0
+                                        Layout.alignment: Qt.AlignVCenter
 
                                         NumberAnimation on rotation {
                                             id: refreshAnim
@@ -163,12 +154,18 @@ Item {
 
                                 RowLayout {
                                     Layout.alignment: Qt.AlignHCenter
-                                    spacing: 4
+                                    spacing: 5
                                     visible: serverStatusBridge.isOnline
 
-                                    Text {
-                                        text: "📶"
-                                        font.pixelSize: 9
+                                    LCAIcon {
+                                        source: "qrc:/qt/qml/LCALauncher/assets/icons/signal.svg"
+                                        size: 10
+                                        color: {
+                                            if (serverStatusBridge.pingMs < 60) return "#00FFA3";
+                                            if (serverStatusBridge.pingMs < 150) return "#FFD54F";
+                                            return "#FF5252";
+                                        }
+                                        Layout.alignment: Qt.AlignVCenter
                                     }
                                     Text {
                                         text: serverStatusBridge.pingMs + " ms"
@@ -179,84 +176,9 @@ Item {
                                         }
                                         font.pixelSize: 10
                                         font.bold: true
+                                        Layout.alignment: Qt.AlignVCenter
                                     }
                                 }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Quick Info Cards
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 20
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 90
-                    radius: 14
-                    color: "#8C0F1424"
-                    border.color: "#2EFFFFFF"
-                    border.width: 1
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 18
-                        spacing: 16
-
-                        Text {
-                            text: "☕"
-                            font.pixelSize: 28
-                        }
-                        ColumnLayout {
-                            spacing: 4
-                            Text {
-                                text: "Java Runtime"
-                                color: "#7E879E"
-                                font.pixelSize: 12
-                            }
-                            Text {
-                                text: settingsBridge.detectedJavaInfo
-                                color: "#E0E5F5"
-                                font.pixelSize: 13
-                                font.bold: true
-                                elide: Text.ElideRight
-                                Layout.maximumWidth: 260
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 90
-                    radius: 14
-                    color: "#8C0F1424"
-                    border.color: "#2EFFFFFF"
-                    border.width: 1
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 18
-                        spacing: 16
-
-                        Text {
-                            text: "⚡"
-                            font.pixelSize: 28
-                        }
-                        ColumnLayout {
-                            spacing: 4
-                            Text {
-                                text: "Выделенная память (RAM)"
-                                color: "#7E879E"
-                                font.pixelSize: 12
-                            }
-                            Text {
-                                text: (settingsBridge.ramMb / 1024).toFixed(1) + " GB"
-                                color: "#00FFA3"
-                                font.pixelSize: 14
-                                font.bold: true
                             }
                         }
                     }

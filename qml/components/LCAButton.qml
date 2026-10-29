@@ -7,19 +7,43 @@ Button {
     property color accentColor: "#00E5FF"
     property color textColor: "#FFFFFF"
     property bool isPrimary: false
+    property string iconSource: ""
+    property color iconColor: root.textColor
+    property real iconSize: 16
 
     implicitHeight: 44
     implicitWidth: 140
 
-    contentItem: Text {
-        text: root.text
-        font.pixelSize: 14
-        font.bold: true
-        font.family: "Segoe UI, Inter, Roboto, sans-serif"
-        color: root.textColor
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+    contentItem: Item {
+        implicitWidth: contentRow.implicitWidth
+        implicitHeight: contentRow.implicitHeight
+
+        Row {
+            id: contentRow
+            anchors.centerIn: parent
+            spacing: 8
+
+            LCAIcon {
+                visible: root.iconSource !== ""
+                source: root.iconSource
+                size: root.iconSize
+                color: root.iconColor
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+                visible: root.text !== ""
+                text: root.text
+                font.pixelSize: 14
+                font.bold: true
+                font.family: "Segoe UI, Inter, Roboto, sans-serif"
+                color: root.textColor
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
     }
 
     background: Rectangle {

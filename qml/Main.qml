@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "views"
+import "components"
 
 ApplicationWindow {
     id: window
@@ -10,7 +11,7 @@ ApplicationWindow {
     minimumWidth: 880
     minimumHeight: 560
     visible: true
-    title: "Live, Camera, Action! SEASON 3 | FROSTY WINTER"
+    title: "Light, Camera, Action! SEASON 3 | FROSTY WINTER"
     color: "#0F1118"
 
     property int currentTabIndex: 0 // 0: Main, 1: Settings, 2: Console, 3: Login
@@ -126,9 +127,9 @@ ApplicationWindow {
 
                     Repeater {
                         model: [
-                            { name: "Главная", icon: "🎮", index: 0 },
-                            { name: "Настройки", icon: "⚙️", index: 1 },
-                            { name: "Консоль", icon: "📜", index: 2 }
+                            { name: "Главная", icon: "qrc:/qt/qml/LCALauncher/assets/icons/gamepad.svg", index: 0 },
+                            { name: "Настройки", icon: "qrc:/qt/qml/LCALauncher/assets/icons/settings.svg", index: 1 },
+                            { name: "Консоль", icon: "qrc:/qt/qml/LCALauncher/assets/icons/console.svg", index: 2 }
                         ]
 
                         Rectangle {
@@ -151,15 +152,20 @@ ApplicationWindow {
                                 anchors.leftMargin: 16
                                 spacing: 12
 
-                                Text {
-                                    text: modelData.icon
-                                    font.pixelSize: 16
+                                LCAIcon {
+                                    source: modelData.icon
+                                    size: 18
+                                    color: (window.currentTabIndex === modelData.index) ? "#00E5FF" : (navArea.containsMouse ? "#FFFFFF" : "#A6B2CC")
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Layout.alignment: Qt.AlignVCenter
                                 }
                                 Text {
                                     text: modelData.name
-                                    color: (window.currentTabIndex === modelData.index) ? "#FFFFFF" : "#A6B2CC"
+                                    color: (window.currentTabIndex === modelData.index) ? "#FFFFFF" : (navArea.containsMouse ? "#E1E7F5" : "#A6B2CC")
                                     font.pixelSize: 14
                                     font.bold: window.currentTabIndex === modelData.index
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Layout.alignment: Qt.AlignVCenter
                                 }
                             }
 

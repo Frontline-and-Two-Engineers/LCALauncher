@@ -45,6 +45,7 @@ find_package(Qt6 REQUIRED COMPONENTS
     QuickControls2 
     Network 
     Concurrent
+    Svg
 )
 
 qt_standard_project_setup(REQUIRES 6.5)
@@ -124,6 +125,7 @@ qt_add_qml_module(LCALauncher
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/components/LCAIcon.qml
         qml/components/LCAButton.qml
         qml/components/LCAProgressBar.qml
         qml/components/LCATextField.qml
@@ -134,6 +136,16 @@ qt_add_qml_module(LCALauncher
     RESOURCES
         assets/logo.png
         assets/background.jpg
+        assets/icons/gamepad.svg
+        assets/icons/settings.svg
+        assets/icons/console.svg
+        assets/icons/refresh.svg
+        assets/icons/signal.svg
+        assets/icons/warning.svg
+        assets/icons/telegram.svg
+        assets/icons/copy.svg
+        assets/icons/check.svg
+        assets/icons/arrow-left.svg
 )
 
 target_include_directories(LCALauncher PRIVATE
@@ -148,6 +160,7 @@ target_link_libraries(LCALauncher PRIVATE
     Qt6::QuickControls2
     Qt6::Network
     Qt6::Concurrent
+    Qt6::Svg
 )
 
 # -----------------------------------------------------------------------------

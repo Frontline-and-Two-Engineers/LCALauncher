@@ -34,8 +34,13 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 LCAButton {
-                    text: copiedTimer.running ? "✓ Скопировано!" : "📋 Скопировать всё"
-                    Layout.preferredWidth: 160
+                    text: copiedTimer.running ? "Скопировано!" : "Скопировать всё"
+                    iconSource: copiedTimer.running 
+                        ? "qrc:/qt/qml/LCALauncher/assets/icons/check.svg" 
+                        : "qrc:/qt/qml/LCALauncher/assets/icons/copy.svg"
+                    iconColor: copiedTimer.running ? "#00FFA3" : "#FFFFFF"
+                    iconSize: 14
+                    Layout.preferredWidth: 165
                     Layout.preferredHeight: 36
                     onClicked: {
                         launcherBridge.copyLogsToClipboard()
