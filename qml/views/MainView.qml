@@ -274,7 +274,7 @@ Item {
                         Text {
                             id: openChannelText
                             anchors.fill: parent
-                            text: "Открыть канал ↗"
+                            text: "Открыть канал"
                             color: openChannelMouse.containsMouse ? "#00E5FF" : "#6E7790"
                             font.pixelSize: 11
                             font.underline: openChannelMouse.containsMouse
@@ -427,7 +427,7 @@ Item {
                                     spacing: 4
 
                                     Text {
-                                        text: "Читать в Telegram →"
+                                        text: "Читать в Telegram"
                                         color: cardMouse.containsMouse ? "#00FFA3" : "#00E5FF"
                                         font.pixelSize: 10
                                         font.bold: true
@@ -436,11 +436,23 @@ Item {
 
                                     Item { Layout.fillWidth: true }
 
-                                    Text {
+                                    RowLayout {
+                                        spacing: 4
                                         visible: modelData.views !== "" && modelData.views !== "0"
-                                        text: "👁 " + modelData.views
-                                        color: "#6B758E"
-                                        font.pixelSize: 10
+
+                                        LCAIcon {
+                                            source: "qrc:/qt/qml/LCALauncher/assets/icons/eye.svg"
+                                            size: 11
+                                            color: "#6B758E"
+                                            Layout.alignment: Qt.AlignVCenter
+                                        }
+
+                                        Text {
+                                            text: modelData.views
+                                            color: "#6B758E"
+                                            font.pixelSize: 10
+                                            Layout.alignment: Qt.AlignVCenter
+                                        }
                                     }
                                 }
                             }

@@ -148,6 +148,7 @@ qt_add_qml_module(LCALauncher
         assets/icons/copy.svg
         assets/icons/check.svg
         assets/icons/arrow-left.svg
+        assets/icons/eye.svg
 )
 
 target_include_directories(LCALauncher PRIVATE
