@@ -10,21 +10,75 @@
 #include <QSysInfo>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QThread>
+#include <QMetaObject>
 
 namespace LCA::Java {
+
+namespace {
+
+// Runs in worker thread: extract, locate java binary, chmod, validate.
+struct ExtractResult {
+    bool success{false};
+    QString javaPath;
+    QString error;
+};
+
+ExtractResult extractAndValidateJava(const QString& archivePath, const QString& extractDir) {
+    ExtractResult result;
+    if (!Utils::ArchiveUtils::extractTarGz(archivePath, extractDir)
+        && !Utils::ArchiveUtils::extractZip(archivePath, extractDir)) {
+        result.error = "Не удалось распаковать архив Java";
+        return result;
+    }
+    Utils::FileUtils::removeFile(archivePath);
+
+#if defined(Q_OS_WIN)
+    const QString targetName = "java.exe";
+#else
+    const QString targetName = "java";
+#endif
+
+    QString javaExe;
+    QDirIterator it(extractDir, QStringList() << targetName, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString path = it.next();
+        if (path.contains("/bin/") || path.contains("\\bin\\")) { javaExe = path; break; }
+    }
+
+    if (javaExe.isEmpty() || !QFile::exists(javaExe)) {
+        result.error = "Исполняемый файл java не найден в распакованном каталоге";
+        return result;
+    }
+
+#if !defined(Q_OS_WIN)
+    QFile::setPermissions(javaExe,
+        QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
+        QFileDevice::ReadGroup | QFileDevice::ExeGroup |
+        QFileDevice::ReadOther | QFileDevice::ExeOther);
+#endif
+
+    JavaInfo info = JavaDetector::inspectJava(javaExe);
+    if (!info.isValid || info.majorVersion < 21) {
+        result.error = QString("Установленная Java не прошла проверку (версия: %1)").arg(info.majorVersion);
+        return result;
+    }
+
+    result.success = true;
+    result.javaPath = javaExe;
+    return result;
+}
+
+} // namespace
 
 JavaDownloader::JavaDownloader(QObject* parent)
     : QObject(parent)
 {
 }
 
-JavaDownloader::~JavaDownloader() {
-    cancel();
-}
+JavaDownloader::~JavaDownloader() { cancel(); }
 
-bool JavaDownloader::isDownloading() const {
-    return m_isDownloading;
-}
+bool JavaDownloader::isDownloading() const { return m_isDownloading; }
 
 QString JavaDownloader::getAdoptiumUrl() const {
     QString os;
@@ -40,9 +94,7 @@ QString JavaDownloader::getAdoptiumUrl() const {
 
     QString arch = "x64";
     QString cpu = QSysInfo::currentCpuArchitecture().toLower();
-    if (cpu == "arm64" || cpu == "aarch64") {
-        arch = "aarch64";
-    }
+    if (cpu == "arm64" || cpu == "aarch64") arch = "aarch64";
 
     return QString("https://api.adoptium.net/v3/binary/latest/21/ga/%1/%2/jre/hotspot/normal/eclipse")
         .arg(os, arch);
@@ -79,31 +131,27 @@ void JavaDownloader::startDownload() {
 
     QNetworkRequest request{QUrl(downloadUrl)};
     request.setRawHeader("User-Agent", "LCALauncher/1.0");
-    // Follow HTTP 307 redirects to CDN/mirrors automatically
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setTransferTimeout(180000);
 
     m_currentReply = m_network.get(request);
     m_isDownloading = true;
 
     connect(m_currentReply, &QNetworkReply::downloadProgress, this, &JavaDownloader::onDownloadProgress);
     connect(m_currentReply, &QIODevice::readyRead, this, [this]() {
-        if (m_outputFile && m_currentReply) {
-            m_outputFile->write(m_currentReply->readAll());
-        }
+        if (m_outputFile && m_currentReply) m_outputFile->write(m_currentReply->readAll());
     });
     connect(m_currentReply, &QNetworkReply::finished, this, &JavaDownloader::onReplyFinished);
 }
 
 void JavaDownloader::cancel() {
     if (!m_isDownloading) return;
-
     m_isDownloading = false;
     if (m_currentReply) {
         m_currentReply->abort();
         m_currentReply->deleteLater();
         m_currentReply = nullptr;
     }
-
     if (m_outputFile) {
         m_outputFile->close();
         m_outputFile->deleteLater();
@@ -150,45 +198,28 @@ void JavaDownloader::onReplyFinished() {
         return;
     }
 
-    // Extraction step
     emit statusChanged("Распаковка Java Runtime...");
     emit progressChanged(1.0, 100, 100);
 
-    // Prepare clean destination directory
     Utils::FileUtils::removeDir(m_extractDir);
     Utils::FileUtils::ensureDir(m_extractDir);
 
-    bool extracted = extractArchive(m_tempArchivePath, m_extractDir);
-    Utils::FileUtils::removeFile(m_tempArchivePath); // Delete archive after unpacking
-
-    if (!extracted) {
-        emit downloadFinished(false, "", "Не удалось распаковать архив Java");
-        return;
-    }
-
-    // Locate the java binary
-    QString javaExe = findJavaExecutable(m_extractDir);
-    if (javaExe.isEmpty() || !QFile::exists(javaExe)) {
-        emit downloadFinished(false, "", "Исполняемый файл java не найден в распакованном каталоге");
-        return;
-    }
-
-    // Set executable permissions on macOS / Linux
-#if !defined(Q_OS_WIN)
-    QFile::setPermissions(javaExe, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
-                                   QFileDevice::ReadGroup | QFileDevice::ExeGroup |
-                                   QFileDevice::ReadOther | QFileDevice::ExeOther);
-#endif
-
-    // Validate version
-    JavaInfo info = JavaDetector::inspectJava(javaExe);
-    if (!info.isValid || info.majorVersion < 21) {
-        emit downloadFinished(false, "", QString("Установленная Java не прошла проверку (версия: %1)").arg(info.majorVersion));
-        return;
-    }
-
-    emit statusChanged(QString("Java 21 готова к работе (%1)").arg(info.versionString));
-    emit downloadFinished(true, javaExe, "");
+    // Extract in worker thread; do NOT block the GUI.
+    // Note: QThread::create() auto-deletes the thread object on finish — no manual setAutoDelete().
+    const QString archive = m_tempArchivePath;
+    const QString dir = m_extractDir;
+    QThread* worker = QThread::create([this, archive, dir]() {
+        ExtractResult result = extractAndValidateJava(archive, dir);
+        QMetaObject::invokeMethod(this, [this, result]() {
+            if (!result.success) {
+                emit downloadFinished(false, "", result.error);
+                return;
+            }
+            emit statusChanged("Java 21 готова к работе");
+            emit downloadFinished(true, result.javaPath, "");
+        }, Qt::QueuedConnection);
+    });
+    worker->start();
 }
 
 bool JavaDownloader::extractArchive(const QString& archivePath, const QString& destinationDir) {
@@ -205,15 +236,10 @@ QString JavaDownloader::findJavaExecutable(const QString& rootDir) const {
 #else
     const QString targetName = "java";
 #endif
-
-    // Recursive search in rootDir for target executable
     QDirIterator it(rootDir, QStringList() << targetName, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString path = it.next();
-        // Skip jspawnhelper or other binaries, ensure it's in a /bin directory
-        if (path.contains("/bin/") || path.contains("\\bin\\")) {
-            return path;
-        }
+        if (path.contains("/bin/") || path.contains("\\bin\\")) return path;
     }
     return {};
 }

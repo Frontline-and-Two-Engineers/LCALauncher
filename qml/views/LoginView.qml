@@ -27,24 +27,24 @@ Item {
         anchors.fill: parent
         color: "transparent"
 
-        // Background decorative glow
-        Rectangle {
-            width: 500
-            height: 500
-            radius: 250
-            color: "#1200E5FF"
-            anchors.centerIn: parent
-        }
-
         ScrollView {
+            id: loginScrollView
             anchors.fill: parent
             contentWidth: availableWidth
+            contentHeight: loginContentWrapper.implicitHeight
             clip: true
 
-            ColumnLayout {
-                anchors.centerIn: parent
-                width: Math.min(460, parent.width - 40)
-                spacing: 20
+            Item {
+                id: loginContentWrapper
+                width: loginScrollView.availableWidth
+                implicitHeight: Math.max(loginColumn.implicitHeight + 100, loginScrollView.availableHeight)
+
+                ColumnLayout {
+                    id: loginColumn
+                    width: Math.min(460, parent.width - 48)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 18
 
                 // Header
                 ColumnLayout {
@@ -56,15 +56,6 @@ Item {
                         color: "#FFFFFF"
                         font.pixelSize: 26
                         font.bold: true
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    Text {
-                        text: authBridge.isLoggedIn 
-                              ? "Лаунчер привязан к вашей учетной записи"
-                              : ("Привязка лаунчера через бота " + authBridge.telegramBotUsername)
-                        color: "#8B95AB"
-                        font.pixelSize: 13
                         Layout.alignment: Qt.AlignHCenter
                     }
                 }
@@ -109,40 +100,6 @@ Item {
 
                             RowLayout {
                                 spacing: 16
-
-                                Item {
-                                    implicitWidth: settingsRow.implicitWidth
-                                    implicitHeight: settingsRow.implicitHeight
-
-                                    Row {
-                                        id: settingsRow
-                                        anchors.fill: parent
-                                        spacing: 6
-
-                                        LCAIcon {
-                                            source: "qrc:/qt/qml/LCALauncher/assets/icons/settings.svg"
-                                            size: 13
-                                            color: "#00E5FF"
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-
-                                        Text {
-                                            text: "Настройки сервера"
-                                            color: "#00E5FF"
-                                            font.pixelSize: 12
-                                            font.underline: settingsMouse.containsMouse
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-                                    }
-
-                                    MouseArea {
-                                        id: settingsMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: root.openSettingsRequested()
-                                    }
-                                }
 
                                 Item {
                                     implicitWidth: retryRow.implicitWidth
@@ -310,6 +267,7 @@ Item {
                                 color: authBridge.isCodeExpired ? "#FF8A80" : "#7E879E"
                                 font.pixelSize: 11
                                 font.bold: true
+                                font.italic: true
                                 font.letterSpacing: 1.5
                                 Layout.alignment: Qt.AlignHCenter
                             }
@@ -373,6 +331,7 @@ Item {
                                     }
                                     color: root.isCopiedNotification ? "#00FFA3" : (authBridge.isCodeExpired ? "#FF8A80" : "#9AA4BF")
                                     font.pixelSize: 12
+                                    font.italic: true
                                 }
                             }
                         }
@@ -407,6 +366,7 @@ Item {
                                 color: "#00E5FF"
                                 font.pixelSize: 12
                                 font.bold: true
+                                font.italic: true
                             }
                         }
                     }
@@ -439,23 +399,9 @@ Item {
                             onClicked: authBridge.requestCode()
                         }
                     }
-
-                    // Back button row
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
-
-                        Item { Layout.fillWidth: true }
-
-                        LCAButton {
-                            Layout.preferredWidth: 110
-                            Layout.preferredHeight: 38
-                            text: "Назад"
-                            onClicked: root.backClicked()
-                        }
-                    }
                 }
             }
         }
     }
+}
 }

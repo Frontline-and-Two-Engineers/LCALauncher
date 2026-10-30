@@ -13,7 +13,9 @@ AuthBridge::AuthBridge(Auth::AuthService* authService, QObject* parent)
     connect(m_authService, &Auth::AuthService::loginStarted, this, [this]() {
         m_isBusy = true;
         m_errorMessage.clear();
+        m_isCodeExpired = false; // reset expired flag on new request
         emit busyChanged();
+        emit expiredChanged();
     });
 
     connect(m_authService, &Auth::AuthService::codeReceived, this, [this](const QString& code, int expiresIn) {
@@ -73,44 +75,20 @@ AuthBridge::AuthBridge(Auth::AuthService* authService, QObject* parent)
     });
 }
 
-QString AuthBridge::username() const {
-    return m_authService->currentSession().username;
-}
-
-QString AuthBridge::uuid() const {
-    return m_authService->currentSession().uuid;
-}
-
-QString AuthBridge::userType() const {
-    return m_authService->currentSession().userType;
-}
-
-bool AuthBridge::isLoggedIn() const {
-    return m_authService->currentSession().isLoggedIn;
-}
-
-bool AuthBridge::isBusy() const {
-    return m_isBusy;
-}
-
-QString AuthBridge::errorMessage() const {
-    return m_errorMessage;
-}
-
-QString AuthBridge::authCode() const {
-    return m_authCode;
-}
+QString AuthBridge::username() const { return m_authService->currentSession().username; }
+QString AuthBridge::uuid() const { return m_authService->currentSession().uuid; }
+QString AuthBridge::userType() const { return m_authService->currentSession().userType; }
+bool AuthBridge::isLoggedIn() const { return m_authService->currentSession().isLoggedIn; }
+bool AuthBridge::isBusy() const { return m_isBusy; }
+QString AuthBridge::errorMessage() const { return m_errorMessage; }
+QString AuthBridge::authCode() const { return m_authCode; }
 
 QString AuthBridge::formattedAuthCode() const {
-    if (m_authCode.length() == 6) {
-        return m_authCode.left(3) + " " + m_authCode.mid(3);
-    }
+    if (m_authCode.length() == 6) return m_authCode.left(3) + " " + m_authCode.mid(3);
     return m_authCode;
 }
 
-int AuthBridge::remainingSeconds() const {
-    return m_remainingSeconds;
-}
+int AuthBridge::remainingSeconds() const { return m_remainingSeconds; }
 
 QString AuthBridge::formattedTime() const {
     int minutes = m_remainingSeconds / 60;
@@ -118,21 +96,14 @@ QString AuthBridge::formattedTime() const {
     return QString::asprintf("%02d:%02d", minutes, seconds);
 }
 
-bool AuthBridge::isPolling() const {
-    return m_isPolling;
-}
-
-bool AuthBridge::isCodeExpired() const {
-    return m_isCodeExpired;
-}
+bool AuthBridge::isPolling() const { return m_isPolling; }
+bool AuthBridge::isCodeExpired() const { return m_isCodeExpired; }
 
 QString AuthBridge::telegramBotUsername() const {
     return m_authService->telegramBotUsername();
 }
 
-void AuthBridge::requestCode() {
-    m_authService->requestCode();
-}
+void AuthBridge::requestCode() { m_authService->requestCode(); }
 
 void AuthBridge::cancelCode() {
     m_authService->cancelCodePolling();
@@ -141,9 +112,7 @@ void AuthBridge::cancelCode() {
 }
 
 void AuthBridge::copyCodeToClipboard() {
-    if (!m_authCode.isEmpty()) {
-        QGuiApplication::clipboard()->setText(m_authCode);
-    }
+    if (!m_authCode.isEmpty()) QGuiApplication::clipboard()->setText(m_authCode);
 }
 
 void AuthBridge::openTelegramBot() {
@@ -154,8 +123,6 @@ void AuthBridge::openTelegramBot() {
     }
 }
 
-void AuthBridge::logout() {
-    m_authService->logout();
-}
+void AuthBridge::logout() { m_authService->logout(); }
 
 } // namespace LCA::Bridge

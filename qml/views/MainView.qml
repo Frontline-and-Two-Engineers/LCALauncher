@@ -50,6 +50,7 @@ Item {
                                     color: serverStatusBridge.statusColor
                                     font.pixelSize: 11
                                     font.bold: true
+                                    font.italic: true
                                     font.letterSpacing: 1.5
                                 }
                                 Text {
@@ -66,9 +67,10 @@ Item {
                             }
 
                             Text {
-                                text: "Light, Camera, Action! 3 СЕЗОН | FROSTY WINTER"
+                                text: "Сезон \"Frosty Winter\" - мороз ждёт Вас!"
                                 color: "#9EA8C2"
                                 font.pixelSize: 14
+                                font.italic: true
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
@@ -406,6 +408,7 @@ Item {
                                                 color: "#A2ADC7"
                                                 font.pixelSize: Math.max(9, Math.round(postCard.adaptiveFontSize * 0.85))
                                                 font.bold: true
+                                                font.italic: true
                                             }
                                         }
                                     }
@@ -471,6 +474,7 @@ Item {
                                         color: cardMouse.containsMouse ? "#00FFA3" : "#00E5FF"
                                         font.pixelSize: Math.max(10, Math.round(postCard.adaptiveFontSize * 0.9))
                                         font.bold: true
+                                        font.italic: true
                                         Behavior on color { ColorAnimation { duration: 150 } }
                                     }
 
@@ -543,10 +547,11 @@ Item {
 
                         Text {
                             text: channelPostsBridge.isLoading 
-                                ? "Загрузка публикаций канала @" + channelPostsBridge.channelUsername + "..." 
-                                : (channelPostsBridge.errorMessage !== "" ? ("Не удалось загрузить новости: " + channelPostsBridge.errorMessage) : "Публикаций пока нет")
+                                ? "Загрузка публикаций канала..." 
+                                : (channelPostsBridge.errorMessage !== "" ? "Не удалось загрузить новости." : "Публикаций пока нет")
                             color: channelPostsBridge.errorMessage !== "" ? "#FF8A80" : "#8E99B3"
                             font.pixelSize: 12
+                            font.italic: true
                             Layout.alignment: Qt.AlignHCenter
                         }
 
@@ -592,6 +597,7 @@ Item {
                             text: launcherBridge.statusText
                             color: "#A2ABBF"
                             font.pixelSize: 14
+                            font.italic: true
                         }
                     }
 
@@ -599,6 +605,7 @@ Item {
                         Layout.preferredWidth: 200
                         Layout.preferredHeight: 56
                         isPrimary: true
+                        anchors.right: parent.right
                         accentColor: launcherBridge.isGameRunning ? "#FF5252" : "#00E5FF"
                         textColor: launcherBridge.isGameRunning ? "#FFFFFF" : "#0A0D14"
                         enabled: !launcherBridge.isBusy

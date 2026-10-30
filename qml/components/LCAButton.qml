@@ -11,6 +11,10 @@ Button {
     property color iconColor: root.textColor
     property real iconSize: 16
 
+    font.family: "RazerF5"
+    font.pixelSize: 14
+    font.bold: true
+
     implicitHeight: 44
     implicitWidth: 140
 
@@ -34,9 +38,10 @@ Button {
             Text {
                 visible: root.text !== ""
                 text: root.text
-                font.pixelSize: 14
-                font.bold: true
-                font.family: "Segoe UI, Inter, Roboto, sans-serif"
+                font.family: root.font.family
+                font.pixelSize: root.font.pixelSize
+                font.bold: root.font.bold
+                font.italic: root.font.italic
                 color: root.textColor
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter

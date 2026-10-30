@@ -16,6 +16,10 @@
 
 namespace LCA::Bridge {
 
+namespace {
+constexpr const char* LWJGL_VERSION = "3.3.3";
+}
+
 LauncherBridge::LauncherBridge(Auth::AuthService* authService, SettingsBridge* settings, QObject* parent)
     : QObject(parent)
     , m_authService(authService)
@@ -23,7 +27,6 @@ LauncherBridge::LauncherBridge(Auth::AuthService* authService, SettingsBridge* s
     , m_syncEngine(new Sync::SyncEngine(m_settings->gameDir(), this))
     , m_gameProcess(new Launch::GameProcess(this))
 {
-    // Sync signals
     connect(m_syncEngine, &Sync::SyncEngine::statusChanged, this, [this](const QString& status) {
         m_statusText = status;
         emit statusChanged();
@@ -38,7 +41,6 @@ LauncherBridge::LauncherBridge(Auth::AuthService* authService, SettingsBridge* s
 
     connect(m_syncEngine, &Sync::SyncEngine::syncFinished, this, &LauncherBridge::onSyncFinished);
 
-    // Process signals
     connect(m_gameProcess, &Launch::GameProcess::gameStarted, this, [this]() {
         m_isBusy = false;
         m_statusText = "Игра запущена";
@@ -75,30 +77,22 @@ QStringList LauncherBridge::consoleLogs() const { return m_consoleLogs; }
 
 void LauncherBridge::appendLog(const QString& line) {
     m_consoleLogs.append(line);
-    if (m_consoleLogs.size() > 5000) {
-        m_consoleLogs.removeFirst();
-    }
+    if (m_consoleLogs.size() > 1000) m_consoleLogs.removeFirst();
     emit logAdded(line);
     emit logsChanged();
 }
 
-void LauncherBridge::clearLogs() {
-    m_consoleLogs.clear();
-    emit logsChanged();
-}
+void LauncherBridge::clearLogs() { m_consoleLogs.clear(); emit logsChanged(); }
 
 void LauncherBridge::copyLogsToClipboard() {
     QGuiApplication::clipboard()->setText(m_consoleLogs.join("\n"));
 }
 
-void LauncherBridge::killGame() {
-    m_gameProcess->kill();
-}
+void LauncherBridge::killGame() { m_gameProcess->kill(); }
 
 void LauncherBridge::launchGame() {
     if (m_isBusy || isGameRunning()) return;
 
-    // 1. Check Auth
     if (!m_authService->currentSession().isLoggedIn) {
         m_statusText = "Требуется авторизация!";
         emit statusChanged();
@@ -114,7 +108,6 @@ void LauncherBridge::launchGame() {
     appendLog(QString("[Launcher] Подготовка к запуску. Игрок: %1 (%2)")
                   .arg(m_authService->currentSession().username, m_authService->currentSession().userType));
 
-    // 2. Validate Java 21
     checkJavaAndProceed();
 }
 
@@ -152,11 +145,8 @@ void LauncherBridge::checkJavaAndProceed() {
                 appendLog("[Java ОШИБКА] " + err);
                 return;
             }
-
             m_settings->setJavaPath(path);
             appendLog("[Java] Успешно установлена Java 21: " + path);
-
-            // Proceed to Step 3: Check base client
             checkClientAndProceed();
         });
 
@@ -198,7 +188,6 @@ void LauncherBridge::checkClientAndProceed() {
                 appendLog("[Клиент ОШИБКА] " + err);
                 return;
             }
-
             appendLog("[Клиент] Базовый клиент 1.21.1 NeoForge успешно распакован и готов!");
             checkNativesAndProceed();
         });
@@ -214,28 +203,25 @@ void LauncherBridge::checkClientAndProceed() {
 void LauncherBridge::checkNativesAndProceed() {
     QString librariesDir = Utils::FileUtils::defaultLauncherDataDir() + "/libraries";
 
-    struct NativeItem {
-        QString relPath;
-        QString url;
-    };
-
+    struct NativeItem { QString relPath; QString url; };
     QList<NativeItem> requiredItems;
     const QStringList modules = {
         "lwjgl", "lwjgl-glfw", "lwjgl-jemalloc", "lwjgl-openal",
         "lwjgl-opengl", "lwjgl-stb", "lwjgl-tinyfd", "lwjgl-freetype"
     };
+    const QString lwjglVer = LWJGL_VERSION;
 
 #if defined(Q_OS_WIN)
     const QString classifier = "natives-windows";
     for (const QString& mod : modules) {
-        QString rel = QString("org/lwjgl/%1/3.3.3/%1-3.3.3-%2.jar").arg(mod, classifier);
+        QString rel = QString("org/lwjgl/%1/%2/%1-%2-%3.jar").arg(mod, lwjglVer, classifier);
         requiredItems.append(NativeItem{rel, "https://libraries.minecraft.net/" + rel});
     }
 #elif defined(Q_OS_MACOS) || defined(Q_OS_APPLE)
     QString arch = QSysInfo::currentCpuArchitecture().toLower();
     QString classifier = (arch == "arm64" || arch == "aarch64") ? "natives-macos-arm64" : "natives-macos";
     for (const QString& mod : modules) {
-        QString rel = QString("org/lwjgl/%1/3.3.3/%1-3.3.3-%2.jar").arg(mod, classifier);
+        QString rel = QString("org/lwjgl/%1/%2/%1-%2-%3.jar").arg(mod, lwjglVer, classifier);
         requiredItems.append(NativeItem{rel, "https://libraries.minecraft.net/" + rel});
     }
     requiredItems.append(NativeItem{
@@ -243,10 +229,9 @@ void LauncherBridge::checkNativesAndProceed() {
         "https://libraries.minecraft.net/ca/weblite/java-objc-bridge/1.1/java-objc-bridge-1.1.jar"
     });
 #else
-    // Linux
     const QString classifier = "natives-linux";
     for (const QString& mod : modules) {
-        QString rel = QString("org/lwjgl/%1/3.3.3/%1-3.3.3-%2.jar").arg(mod, classifier);
+        QString rel = QString("org/lwjgl/%1/%2/%1-%2-%3.jar").arg(mod, lwjglVer, classifier);
         requiredItems.append(NativeItem{rel, "https://libraries.minecraft.net/" + rel});
     }
 #endif
@@ -263,10 +248,7 @@ void LauncherBridge::checkNativesAndProceed() {
         }
     }
 
-    if (tasks.isEmpty()) {
-        startModpackSync();
-        return;
-    }
+    if (tasks.isEmpty()) { startModpackSync(); return; }
 
     appendLog(QString("[Клиент] Обнаружены отсутствующие нативные библиотеки для ОС (%1 шт.). Загрузка с Mojang CDN...")
                   .arg(tasks.size()));
@@ -293,7 +275,6 @@ void LauncherBridge::startModpackSync() {
     m_statusText = "Синхронизация модов и конфигов сервера...";
     emit statusChanged();
     appendLog(QString("[Синхронизация] Подключение к манифесту сборки: %1").arg(m_settings->modpackUrl()));
-
     m_syncEngine->setManifestUrl(m_settings->modpackUrl());
     m_syncEngine->startSync();
 }
@@ -307,7 +288,6 @@ void LauncherBridge::onSyncFinished(bool success, const QString& message) {
         appendLog("[Синхронизация ОШИБКА] " + message);
         return;
     }
-
     appendLog("[Синхронизация] " + message);
     doActualGameLaunch();
 }
@@ -332,7 +312,6 @@ void LauncherBridge::doActualGameLaunch() {
     config.serverPort = m_settings->serverPort();
     config.librariesDir = baseDataDir + "/libraries";
 
-    // 1. Dynamically locate version jar, version id and version json
     QString versionsDir = baseDataDir + "/versions";
     QString clientJar;
     QString versionJson;
@@ -354,38 +333,28 @@ void LauncherBridge::doActualGameLaunch() {
                 clientJar = subDir.filePath(jars.first());
                 config.versionId = sub;
                 QStringList jsons = subDir.entryList(QStringList() << "*.json", QDir::Files);
-                if (!jsons.isEmpty()) {
-                    versionJson = subDir.filePath(jsons.first());
-                }
+                if (!jsons.isEmpty()) versionJson = subDir.filePath(jsons.first());
                 break;
             }
         }
     }
 
-    // 2. Authlib injector path
     QString authlibPath = baseDataDir + "/authlib-injector.jar";
     if (!QFile::exists(authlibPath)) {
         QDirIterator aIt(baseDataDir, QStringList() << "authlib-injector*.jar", QDir::Files, QDirIterator::Subdirectories);
-        if (aIt.hasNext()) {
-            authlibPath = aIt.next();
-        }
+        if (aIt.hasNext()) authlibPath = aIt.next();
     }
     config.authlibInjectorPath = authlibPath;
 
-    // Ensure Yggdrasil URL points to /api/yggdrasil endpoint
     QString authUrl = m_settings->authUrl().trimmed();
     if (!authUrl.isEmpty() && !authUrl.contains("/api/yggdrasil")) {
-        if (authUrl.endsWith('/')) {
-            authUrl.chop(1);
-        }
+        if (authUrl.endsWith('/')) authUrl.chop(1);
         authUrl += "/api/yggdrasil";
     }
     config.authServerYggdrasilUrl = authUrl;
 
-    // 3. Default NeoForge main class
     config.mainClass = "cpw.mods.bootstraplauncher.BootstrapLauncher";
 
-    // 4. Read version JSON if present
     QSet<QString> downloadOnlyNames;
     if (!versionJson.isEmpty() && QFile::exists(versionJson)) {
         QFile file(versionJson);
@@ -393,16 +362,13 @@ void LauncherBridge::doActualGameLaunch() {
             QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
             if (doc.isObject()) {
                 QJsonObject obj = doc.object();
-                if (obj.contains("mainClass")) {
-                    config.mainClass = obj["mainClass"].toString();
-                }
+                if (obj.contains("mainClass")) config.mainClass = obj["mainClass"].toString();
                 if (obj.contains("assetIndex") && obj["assetIndex"].isObject()) {
                     config.assetIndex = obj["assetIndex"].toObject()["id"].toString("17");
                 } else if (obj.contains("assets")) {
                     config.assetIndex = obj["assets"].toString("17");
                 }
 
-                // Check libraries for downloadOnly
                 if (obj.contains("libraries") && obj["libraries"].isArray()) {
                     for (const auto& lVal : obj["libraries"].toArray()) {
                         QJsonObject lObj = lVal.toObject();
@@ -414,13 +380,11 @@ void LauncherBridge::doActualGameLaunch() {
                                 QString ver = parts[2];
                                 QString classifier = parts.size() > 3 ? ("-" + parts[3]) : "";
                                 downloadOnlyNames.insert(artifact + "-" + ver + classifier);
-                                downloadOnlyNames.insert(artifact);
                             }
                         }
                     }
                 }
 
-                // Check extra game arguments (like --fml.neoForgeVersion, --launchTarget, etc.)
                 if (obj.contains("arguments") && obj["arguments"].isObject()) {
                     QJsonObject argsObj = obj["arguments"].toObject();
                     if (argsObj.contains("game") && argsObj["game"].isArray()) {
@@ -448,16 +412,10 @@ void LauncherBridge::doActualGameLaunch() {
             }
         }
     }
-
-    // Fallback if --launchTarget was not in JSON
     if (!config.extraGameArgs.contains("--launchTarget")) {
         config.extraGameArgs << "--launchTarget" << "forgeclient";
     }
 
-    // 5. Gather module-path and classpath
-    // In NeoForge 1.21.1:
-    // Module-path MUST ONLY contain: bootstraplauncher, securejarhandler, asm, JarJarFileSystems
-    // Everything else goes to Classpath (EXCEPT downloadOnly jars like universal or srg)
     QSet<QString> seenClasspath;
     auto addClasspath = [&](const QString& jar) {
         if (!jar.isEmpty() && QFile::exists(jar) && !seenClasspath.contains(jar)) {
@@ -473,42 +431,41 @@ void LauncherBridge::doActualGameLaunch() {
         while (it.hasNext()) {
             QString jar = it.next();
             QString fileName = QFileInfo(jar).fileName();
+            const QString normJar = QDir::fromNativeSeparators(jar);
 
-            // Module path jars: strictly only the 4 boot module components
-            if (jar.contains("bootstraplauncher") ||
-                jar.contains("securejarhandler") ||
-                jar.contains("JarJarFileSystems") ||
-                (jar.contains("asm") && (jar.contains("/org/ow2/asm/") || jar.contains("\\org\\ow2\\asm\\")))) {
+            // --- Module path detection (strict, file-name based) ---
+            const bool isBootstrap    = fileName.startsWith("bootstraplauncher-");
+            const bool isSecureJar    = fileName.startsWith("securejarhandler-");
+            const bool isJarJar       = fileName.startsWith("JarJarFileSystems-");
+            // Base ASM only: matches asm-9.x.jar, NOT asm-analysis/asm-tree/asm-commons/asm-util/asm-bom/asm-test
+            const bool isBaseAsm      = normJar.contains("/org/ow2/asm/asm/")
+                                        && fileName.startsWith("asm-")
+                                        && !fileName.startsWith("asm-bom")
+                                        && !fileName.startsWith("asm-test");
+
+            if (isBootstrap || isSecureJar || isJarJar || isBaseAsm) {
                 config.modulePath.append(jar);
             }
 
-            // Check if this jar is downloadOnly / mod jar (should NOT be on classpath)
+            // --- downloadOnly exclusion (jars that exist on disk but must not be classloaded) ---
             bool isDownloadOnly = false;
-            if (jar.contains("neoforge-") && jar.contains("universal")) {
+            if (fileName.contains("neoforge-") && fileName.contains("universal")) {
                 isDownloadOnly = true;
-            } else if (jar.contains("client-") && (jar.contains("-srg") || jar.contains("-slim") || jar.contains("-extra"))) {
+            } else if (fileName.contains("client-") &&
+                       (fileName.contains("-srg") || fileName.contains("-slim") || fileName.contains("-extra"))) {
                 isDownloadOnly = true;
             } else {
                 for (const QString& dName : downloadOnlyNames) {
-                    if (fileName.contains(dName)) {
-                        isDownloadOnly = true;
-                        break;
-                    }
+                    if (fileName.contains(dName)) { isDownloadOnly = true; break; }
                 }
             }
 
-            if (!isDownloadOnly) {
-                addClasspath(jar);
-            }
+            if (!isDownloadOnly) addClasspath(jar);
         }
     }
 
-    // Append client jar if found
-    if (!clientJar.isEmpty() && QFile::exists(clientJar)) {
-        addClasspath(clientJar);
-    }
+    if (!clientJar.isEmpty() && QFile::exists(clientJar)) addClasspath(clientJar);
 
-    // Launch!
     m_statusText = "Запуск Minecraft...";
     emit statusChanged();
     m_gameProcess->launch(config);

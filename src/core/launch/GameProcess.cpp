@@ -10,6 +10,11 @@ GameProcess::GameProcess(QObject* parent)
     connect(&m_process, &QProcess::readyReadStandardError, this, &GameProcess::onReadyReadStderr);
     connect(&m_process, &QProcess::finished, this, &GameProcess::onProcessFinished);
     connect(&m_process, &QProcess::errorOccurred, this, &GameProcess::onProcessError);
+
+    // Asynchronous start notification (non-blocking launch)
+    connect(&m_process, &QProcess::started, this, [this]() {
+        emit gameStarted();
+    });
 }
 
 GameProcess::~GameProcess() {
@@ -39,22 +44,18 @@ bool GameProcess::launch(const LaunchConfig& config) {
     emit logReceived(QString("[Launcher] Запуск игры: %1 %2")
                          .arg(config.javaPath, args.join(" ")));
 
+    // Start asynchronously — do NOT block the GUI thread with waitForStarted().
+    // Outcomes are reported via signals:
+    //   - gameStarted()    on QProcess::started
+    //   - launchError(...) on QProcess::errorOccurred(FailedToStart)
     m_process.start();
-    if (!m_process.waitForStarted(5000)) {
-        emit launchError("Не удалось запустить процесс Java: " + m_process.errorString());
-        return false;
-    }
-
-    emit gameStarted();
     return true;
 }
 
 void GameProcess::kill() {
     if (isRunning()) {
         m_process.terminate();
-        if (!m_process.waitForFinished(2000)) {
-            m_process.kill();
-        }
+        if (!m_process.waitForFinished(2000)) m_process.kill();
     }
 }
 
@@ -62,17 +63,13 @@ bool GameProcess::isRunning() const {
     return m_process.state() != QProcess::NotRunning;
 }
 
-qint64 GameProcess::processId() const {
-    return m_process.processId();
-}
+qint64 GameProcess::processId() const { return m_process.processId(); }
 
 void GameProcess::onReadyReadStdout() {
     QByteArray data = m_process.readAllStandardOutput();
     QString text = QString::fromUtf8(data);
     for (const QString& line : text.split('\n')) {
-        if (!line.trimmed().isEmpty()) {
-            emit logReceived(line);
-        }
+        if (!line.trimmed().isEmpty()) emit logReceived(line);
     }
 }
 
@@ -80,9 +77,7 @@ void GameProcess::onReadyReadStderr() {
     QByteArray data = m_process.readAllStandardError();
     QString text = QString::fromUtf8(data);
     for (const QString& line : text.split('\n')) {
-        if (!line.trimmed().isEmpty()) {
-            emit logReceived("[ERR] " + line);
-        }
+        if (!line.trimmed().isEmpty()) emit logReceived("[ERR] " + line);
     }
 }
 

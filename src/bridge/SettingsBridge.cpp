@@ -210,6 +210,7 @@ void SettingsBridge::resetToDefaults() {
     m_modpackUrl = "https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/manifest.json";
     m_clientBaseUrl = "https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/files/client-base.zip";
     m_gameDir = Utils::FileUtils::defaultGameDir();
+    m_javaPath.clear(); // will be re-detected below
 
     if (m_authService) {
         m_authService->setBaseUrl(m_authUrl);

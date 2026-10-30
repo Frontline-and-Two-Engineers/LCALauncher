@@ -3,6 +3,8 @@
 #include <QQmlContext>
 #include <QIcon>
 #include <QQuickStyle>
+#include <QFontDatabase>
+#include <QFont>
 
 #include "core/auth/AuthService.h"
 #include "bridge/AuthBridge.h"
@@ -22,6 +24,27 @@ int main(int argc, char *argv[]) {
 
     QQuickStyle::setStyle("Basic");
 
+    // Load custom application fonts from assets/fonts
+    const QStringList fontFiles = {
+        QStringLiteral(":/qt/qml/LCALauncher/assets/fonts/dehinted-RazerF5-Regular.ttf"),
+        QStringLiteral(":/qt/qml/LCALauncher/assets/fonts/dehinted-RazerF5-Regitalic.ttf"),
+        QStringLiteral(":/qt/qml/LCALauncher/assets/fonts/dehinted-RazerF5-Bold.ttf"),
+        QStringLiteral(":/qt/qml/LCALauncher/assets/fonts/dehinted-RazerF5-Bolditalic.ttf")
+    };
+    for (const auto &file : fontFiles) {
+        int id = QFontDatabase::addApplicationFont(file);
+        if (id < 0) {
+            QString localPath = file;
+            localPath.replace(QStringLiteral(":/qt/qml/LCALauncher/"), QString());
+            QFontDatabase::addApplicationFont(localPath);
+        }
+    }
+
+    // Set base font for entire application
+    QFont baseFont(QStringLiteral("RazerF5"));
+    baseFont.setStyleHint(QFont::SansSerif);
+    app.setFont(baseFont);
+
     // Initialize Core Services
     auto authService = new LCA::Auth::AuthService(&app);
     authService->restoreSavedSession();
@@ -36,6 +59,7 @@ int main(int argc, char *argv[]) {
     QQmlApplicationEngine engine;
 
     // Expose Bridges to QML
+    engine.rootContext()->setContextProperty("appFontFamily", QStringLiteral("RazerF5"));
     engine.rootContext()->setContextProperty("authBridge", authBridge);
     engine.rootContext()->setContextProperty("settingsBridge", settingsBridge);
     engine.rootContext()->setContextProperty("launcherBridge", launcherBridge);

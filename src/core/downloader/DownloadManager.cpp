@@ -18,9 +18,7 @@ void DownloadManager::addTask(const DownloadTask& task) {
 }
 
 void DownloadManager::addTasks(const QList<DownloadTask>& tasks) {
-    for (const auto& task : tasks) {
-        addTask(task);
-    }
+    for (const auto& task : tasks) addTask(task);
 }
 
 void DownloadManager::start() {
@@ -33,51 +31,48 @@ void DownloadManager::start() {
         emit allFinished();
         return;
     }
-
     processQueue();
 }
 
 void DownloadManager::cancel() {
     m_isRunning = false;
+
+    // Abort & cleanup active replies
     for (auto it = m_activeTasks.begin(); it != m_activeTasks.end(); ++it) {
-        it.key()->abort();
-        it.key()->deleteLater();
+        QNetworkReply* reply = it.key();
+        ActiveTask& active = it.value();
+        reply->disconnect(this);
+        reply->abort();
+        reply->deleteLater();
+        if (active.file) {
+            active.file->close();
+            active.file->remove();
+            active.file->deleteLater();
+        }
     }
     m_activeTasks.clear();
+
+    // Drop pending queue
     m_pendingTasks.clear();
     m_totalCount = 0;
     m_completedCount = 0;
+
+    // Notify listeners so they don't hang
+    emit allFinished();
 }
 
-bool DownloadManager::isRunning() const {
-    return m_isRunning;
-}
-
-qint64 DownloadManager::totalTasksCount() const {
-    return m_totalCount;
-}
-
-qint64 DownloadManager::completedTasksCount() const {
-    return m_completedCount;
-}
+bool DownloadManager::isRunning() const { return m_isRunning; }
+qint64 DownloadManager::totalTasksCount() const { return m_totalCount; }
+qint64 DownloadManager::completedTasksCount() const { return m_completedCount; }
 
 bool DownloadManager::checkExistingFileValid(const DownloadTask& task) {
-    if (!QFile::exists(task.destinationPath)) {
-        return false;
-    }
-
-    if (!task.expectedSha256.isEmpty()) {
+    if (!QFile::exists(task.destinationPath)) return false;
+    if (!task.expectedSha256.isEmpty())
         return Utils::HashUtils::verifySha256(task.destinationPath, task.expectedSha256);
-    }
-
-    if (!task.expectedSha1.isEmpty()) {
+    if (!task.expectedSha1.isEmpty())
         return Utils::HashUtils::verifySha1(task.destinationPath, task.expectedSha1);
-    }
-
-    if (task.size > 0) {
+    if (task.size > 0)
         return QFileInfo(task.destinationPath).size() == task.size;
-    }
-
     return true;
 }
 
@@ -87,7 +82,6 @@ void DownloadManager::processQueue() {
     while (m_activeTasks.size() < m_maxConcurrent && !m_pendingTasks.isEmpty()) {
         DownloadTask task = m_pendingTasks.dequeue();
 
-        // Check if file is already valid on disk
         if (checkExistingFileValid(task)) {
             m_completedCount++;
             double percent = m_totalCount > 0 ? (double)m_completedCount / m_totalCount : 1.0;
@@ -95,15 +89,32 @@ void DownloadManager::processQueue() {
             continue;
         }
 
-        // Prepare destination directory
         Utils::FileUtils::ensureDir(QFileInfo(task.destinationPath).absolutePath());
+
+        // Write to a .part file, then atomically rename on success
+        const QString partPath = task.destinationPath + ".part";
+        Utils::FileUtils::removeFile(partPath);
+
+        QFile* file = new QFile(partPath);
+        if (!file->open(QIODevice::WriteOnly)) {
+            delete file;
+            emit taskFailed(task.destinationPath, "Не удалось создать файл: " + partPath);
+            m_completedCount++;
+            continue;
+        }
 
         QNetworkRequest request(task.url);
         request.setRawHeader("User-Agent", "LCALauncher/1.0");
         request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+        request.setTransferTimeout(60000);
 
         QNetworkReply* reply = m_network.get(request);
-        m_activeTasks.insert(reply, task);
+        m_activeTasks.insert(reply, ActiveTask{task, file});
+
+        // Stream to disk as chunks arrive
+        connect(reply, &QNetworkReply::readyRead, this, [reply, file]() {
+            if (file && file->isOpen()) file->write(reply->readAll());
+        });
         connect(reply, &QNetworkReply::finished, this, [this, reply]() {
             onReplyFinished(reply);
         });
@@ -116,39 +127,49 @@ void DownloadManager::processQueue() {
 }
 
 void DownloadManager::onReplyFinished(QNetworkReply* reply) {
-    if (!m_activeTasks.contains(reply)) {
-        reply->deleteLater();
-        return;
-    }
+    if (!m_activeTasks.contains(reply)) { reply->deleteLater(); return; }
 
-    DownloadTask task = m_activeTasks.take(reply);
+    ActiveTask active = m_activeTasks.take(reply);
+    const DownloadTask task = active.task;
+    const QNetworkReply::NetworkError err = reply->error();
+    const QString errStr = reply->errorString();
+
+    // Drain any remaining bytes, then close
+    if (active.file) {
+        if (err == QNetworkReply::NoError) {
+            active.file->write(reply->readAll());
+        }
+        active.file->flush();
+        active.file->close();
+        active.file->deleteLater();
+        active.file = nullptr;
+    }
     reply->deleteLater();
 
-    if (reply->error() != QNetworkReply::NoError) {
-        emit taskFailed(task.destinationPath, reply->errorString());
+    const QString partPath = task.destinationPath + ".part";
+
+    if (err != QNetworkReply::NoError) {
+        Utils::FileUtils::removeFile(partPath);
+        emit taskFailed(task.destinationPath, errStr);
     } else {
-        QByteArray data = reply->readAll();
-        QFile file(task.destinationPath);
-        if (file.open(QIODevice::WriteOnly)) {
-            file.write(data);
-            file.close();
+        bool valid = true;
+        if (!task.expectedSha256.isEmpty())
+            valid = Utils::HashUtils::verifySha256(partPath, task.expectedSha256);
+        else if (!task.expectedSha1.isEmpty())
+            valid = Utils::HashUtils::verifySha1(partPath, task.expectedSha1);
 
-            // Verify integrity
-            bool valid = true;
-            if (!task.expectedSha256.isEmpty()) {
-                valid = Utils::HashUtils::verifySha256(task.destinationPath, task.expectedSha256);
-            } else if (!task.expectedSha1.isEmpty()) {
-                valid = Utils::HashUtils::verifySha1(task.destinationPath, task.expectedSha1);
-            }
-
-            if (!valid) {
-                QFile::remove(task.destinationPath);
-                emit taskFailed(task.destinationPath, "Контрольная сумма файла не совпадает");
-            } else {
-                emit fileDownloaded(task.destinationPath);
-            }
+        if (!valid) {
+            Utils::FileUtils::removeFile(partPath);
+            emit taskFailed(task.destinationPath, "Контрольная сумма файла не совпадает");
         } else {
-            emit taskFailed(task.destinationPath, "Не удалось сохранить файл на диск");
+            // Atomic replace: remove old, rename .part -> destination
+            Utils::FileUtils::removeFile(task.destinationPath);
+            if (QFile::rename(partPath, task.destinationPath)) {
+                emit fileDownloaded(task.destinationPath);
+            } else {
+                Utils::FileUtils::removeFile(partPath);
+                emit taskFailed(task.destinationPath, "Не удалось переименовать .part в финальный файл");
+            }
         }
     }
 
@@ -158,5 +179,7 @@ void DownloadManager::onReplyFinished(QNetworkReply* reply) {
 
     processQueue();
 }
+
+void DownloadManager::onReplyReadyRead() { /* handled via lambda above */ }
 
 } // namespace LCA::Downloader

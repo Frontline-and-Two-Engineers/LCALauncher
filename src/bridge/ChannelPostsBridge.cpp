@@ -20,37 +20,24 @@ ChannelPostsBridge::ChannelPostsBridge(SettingsBridge* settingsBridge, QObject* 
             refresh();
         });
     }
-
     refresh();
 }
 
-QVariantList ChannelPostsBridge::posts() const {
-    return m_posts;
-}
-
-bool ChannelPostsBridge::isLoading() const {
-    return m_isLoading;
-}
-
-QString ChannelPostsBridge::errorMessage() const {
-    return m_errorMessage;
-}
-
-QString ChannelPostsBridge::channelUsername() const {
-    return m_channelUsername;
-}
+QVariantList ChannelPostsBridge::posts() const { return m_posts; }
+bool ChannelPostsBridge::isLoading() const { return m_isLoading; }
+QString ChannelPostsBridge::errorMessage() const { return m_errorMessage; }
+QString ChannelPostsBridge::channelUsername() const { return m_channelUsername; }
 
 void ChannelPostsBridge::refresh() {
     if (!m_settingsBridge) return;
 
     QString baseUrl = m_settingsBridge->authUrl();
-    if (baseUrl.isEmpty()) {
-        baseUrl = "http://127.0.0.1:8080";
-    }
+    if (baseUrl.isEmpty()) baseUrl = "http://127.0.0.1:8080";
 
     QUrl requestUrl(baseUrl + "/api/channel/posts?limit=3");
     QNetworkRequest request(requestUrl);
     request.setHeader(QNetworkRequest::UserAgentHeader, "LCALauncher/1.0");
+    request.setTransferTimeout(10000); // 10s timeout
 
     m_isLoading = true;
     emit loadingChanged();
@@ -62,18 +49,21 @@ void ChannelPostsBridge::refresh() {
 }
 
 void ChannelPostsBridge::onReplyFinished(QNetworkReply* reply) {
-    reply->deleteLater();
     m_isLoading = false;
     emit loadingChanged();
 
     if (reply->error() != QNetworkReply::NoError) {
         m_errorMessage = reply->errorString();
         qWarning() << "[ChannelPostsBridge] Failed to fetch channel posts:" << m_errorMessage;
+        reply->deleteLater();
         emit errorChanged();
         return;
     }
 
+    // Read data BEFORE deleteLater to avoid relying on event-loop ordering
     QByteArray data = reply->readAll();
+    reply->deleteLater();
+
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
 

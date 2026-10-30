@@ -5,8 +5,44 @@
 #include <QDirIterator>
 #include <QUrl>
 #include <QNetworkRequest>
+#include <QThread>
+#include <QMetaObject>
 
 namespace LCA::Client {
+
+namespace {
+
+// Runs in worker thread: extract, unwrap nested dir, verify layout.
+bool extractClientArchive(const QString& zipPath, const QString& dataDir) {
+    if (!Utils::ArchiveUtils::extractZip(zipPath, dataDir)) return false;
+    Utils::FileUtils::removeFile(zipPath);
+
+    // Auto-unwrap if archive had an enclosing root folder
+    if (!QDir(dataDir + "/versions").exists() || !QDir(dataDir + "/libraries").exists()) {
+        QDir baseDir(dataDir);
+        QStringList subdirs = baseDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString& sub : subdirs) {
+            if (sub == "temp" || sub == "runtime" || sub == "game") continue;
+            QString subPath = baseDir.filePath(sub);
+            if (QDir(subPath + "/versions").exists() || QDir(subPath + "/libraries").exists()) {
+                QDir nestedDir(subPath);
+                QStringList entries = nestedDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const QString& entry : entries) {
+                    QString src = nestedDir.filePath(entry);
+                    QString dst = baseDir.filePath(entry);
+                    if (QFileInfo(src).isDir()) Utils::FileUtils::removeDir(dst);
+                    else Utils::FileUtils::removeFile(dst);
+                    QFile::rename(src, dst);
+                }
+                nestedDir.removeRecursively();
+                break;
+            }
+        }
+    }
+    return ClientDownloader::isClientInstalled(dataDir);
+}
+
+} // namespace
 
 ClientDownloader::ClientDownloader(QObject* parent)
     : QObject(parent)
@@ -20,25 +56,17 @@ ClientDownloader::~ClientDownloader() {
 bool ClientDownloader::isClientInstalled(const QString& launcherDataDir) {
     if (launcherDataDir.isEmpty()) return false;
 
-    // 1. Check for libraries directory containing .jar files
     QString libDir = launcherDataDir + "/libraries";
     if (!QDir(libDir).exists()) return false;
 
     QDirIterator it(libDir, QStringList() << "*.jar", QDir::Files, QDirIterator::Subdirectories);
-    if (!it.hasNext()) {
-        return false; // Libraries directory is empty
-    }
+    if (!it.hasNext()) return false;
 
-    // 2. Check for client version jar inside versions/
     QDir versionsDir(launcherDataDir + "/versions");
     if (!versionsDir.exists()) return false;
 
     QDirIterator vIt(versionsDir.path(), QStringList() << "*.jar", QDir::Files, QDirIterator::Subdirectories);
-    if (!vIt.hasNext()) {
-        return false; // No version jar found
-    }
-
-    return true;
+    return vIt.hasNext();
 }
 
 void ClientDownloader::startDownload(const QString& downloadUrl, const QString& launcherDataDir) {
@@ -55,8 +83,6 @@ void ClientDownloader::startDownload(const QString& downloadUrl, const QString& 
     QString tempDir = m_launcherDataDir + "/temp";
     Utils::FileUtils::ensureDir(tempDir);
     m_tempZipPath = tempDir + "/client-base.zip";
-
-    // Clean up previous temp archive if any
     Utils::FileUtils::removeFile(m_tempZipPath);
 
     m_outputFile = new QFile(m_tempZipPath, this);
@@ -73,29 +99,26 @@ void ClientDownloader::startDownload(const QString& downloadUrl, const QString& 
     QNetworkRequest request{QUrl(m_downloadUrl)};
     request.setRawHeader("User-Agent", "LCALauncher/1.0");
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setTransferTimeout(120000);
 
     m_currentReply = m_network.get(request);
     m_isDownloading = true;
 
     connect(m_currentReply, &QNetworkReply::downloadProgress, this, &ClientDownloader::onDownloadProgress);
     connect(m_currentReply, &QIODevice::readyRead, this, [this]() {
-        if (m_outputFile && m_currentReply) {
-            m_outputFile->write(m_currentReply->readAll());
-        }
+        if (m_outputFile && m_currentReply) m_outputFile->write(m_currentReply->readAll());
     });
     connect(m_currentReply, &QNetworkReply::finished, this, &ClientDownloader::onReplyFinished);
 }
 
 void ClientDownloader::cancel() {
     if (!m_isDownloading) return;
-
     m_isDownloading = false;
     if (m_currentReply) {
         m_currentReply->abort();
         m_currentReply->deleteLater();
         m_currentReply = nullptr;
     }
-
     if (m_outputFile) {
         m_outputFile->close();
         m_outputFile->deleteLater();
@@ -148,53 +171,25 @@ void ClientDownloader::onReplyFinished() {
         return;
     }
 
-    // Extraction step
     emit statusChanged("Распаковка клиента Minecraft 1.21.1 NeoForge...");
     emit progressChanged(1.0, 100, 100);
 
-    bool extracted = Utils::ArchiveUtils::extractZip(m_tempZipPath, m_launcherDataDir);
-    Utils::FileUtils::removeFile(m_tempZipPath);
-
-    if (!extracted) {
-        emit downloadFinished(false, "Не удалось распаковать архив client-base.zip");
-        return;
-    }
-
-    // Auto-unwrap if archive had an enclosing root folder (e.g. client-base/...)
-    if (!QDir(m_launcherDataDir + "/versions").exists() || !QDir(m_launcherDataDir + "/libraries").exists()) {
-        QDir baseDir(m_launcherDataDir);
-        QStringList subdirs = baseDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-        for (const QString& sub : subdirs) {
-            if (sub == "temp" || sub == "runtime" || sub == "game") continue;
-            QString subPath = baseDir.filePath(sub);
-            if (QDir(subPath + "/versions").exists() || QDir(subPath + "/libraries").exists()) {
-                // Move all items from subPath up into m_launcherDataDir
-                QDir nestedDir(subPath);
-                QStringList entries = nestedDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-                for (const QString& entry : entries) {
-                    QString src = nestedDir.filePath(entry);
-                    QString dst = baseDir.filePath(entry);
-                    if (QFileInfo(src).isDir()) {
-                        Utils::FileUtils::removeDir(dst);
-                    } else {
-                        Utils::FileUtils::removeFile(dst);
-                    }
-                    QFile::rename(src, dst);
-                }
-                nestedDir.removeRecursively();
-                break;
+    // Extract in worker thread; do NOT block the GUI.
+    // Note: QThread::create() auto-deletes the thread object on finish — no manual setAutoDelete().
+    const QString zip = m_tempZipPath;
+    const QString dataDir = m_launcherDataDir;
+    QThread* worker = QThread::create([this, zip, dataDir]() {
+        bool ok = extractClientArchive(zip, dataDir);
+        QMetaObject::invokeMethod(this, [this, ok]() {
+            if (!ok) {
+                emit downloadFinished(false, "Не удалось распаковать архив client-base.zip или он не содержит versions/ и libraries/");
+                return;
             }
-        }
-    }
-
-    // Verify presence
-    if (!isClientInstalled(m_launcherDataDir)) {
-        emit downloadFinished(false, "Распакованный архив не содержит папок versions/ или libraries/");
-        return;
-    }
-
-    emit statusChanged("Клиент Minecraft 1.21.1 NeoForge успешно установлен");
-    emit downloadFinished(true, "");
+            emit statusChanged("Клиент Minecraft 1.21.1 NeoForge успешно установлен");
+            emit downloadFinished(true, "");
+        }, Qt::QueuedConnection);
+    });
+    worker->start();
 }
 
 } // namespace LCA::Client

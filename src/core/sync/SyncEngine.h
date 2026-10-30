@@ -4,6 +4,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSet>
+#include <QStringList>
 #include "core/downloader/DownloadManager.h"
 
 namespace LCA::Sync {
@@ -32,15 +33,19 @@ signals:
 
 private slots:
     void onManifestDownloaded(QNetworkReply* reply);
+    void onDownloaderFinished();
 
 private:
     void verifyAndDownloadFiles(const QList<SyncItem>& items);
     void cleanObsoleteMods(const QSet<QString>& allowedRelativePaths);
+    static bool isSafeRelativePath(const QString& path);
 
     QString m_gameDir;
-    QString m_manifestUrl{"https://myserver.com/api/modpack/manifest.json"};
+    QString m_manifestUrl{"https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/manifest.json"};
     QNetworkAccessManager m_network;
     Downloader::DownloadManager* m_downloader{nullptr};
+    QStringList m_pendingErrors;
+    qint64 m_pendingTotal{0};
 };
 
 } // namespace LCA::Sync

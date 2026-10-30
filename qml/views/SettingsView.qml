@@ -49,6 +49,7 @@ Item {
                             color: "#FF9100"
                             font.pixelSize: 11
                             font.bold: true
+                            font.italic: true
                         }
                     }
                 }
@@ -155,6 +156,7 @@ Item {
                             text: settingsBridge.detectedJavaInfo
                             color: settingsBridge.isDownloadingJava ? "#00E5FF" : "#7E879E"
                             font.pixelSize: 12
+                            font.italic: true
                         }
                     }
                 }

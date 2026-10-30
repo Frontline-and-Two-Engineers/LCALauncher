@@ -5,6 +5,7 @@
 #include <QNetworkReply>
 #include <QQueue>
 #include <QMap>
+#include <QFile>
 #include "DownloadTask.h"
 
 namespace LCA::Downloader {
@@ -32,17 +33,23 @@ signals:
 
 private slots:
     void onReplyFinished(QNetworkReply* reply);
+    void onReplyReadyRead();
 
 private:
     void processQueue();
     bool checkExistingFileValid(const DownloadTask& task);
+
+    struct ActiveTask {
+        DownloadTask task;
+        QFile* file{nullptr};
+    };
 
     QNetworkAccessManager m_network;
     int m_maxConcurrent{6};
     bool m_isRunning{false};
 
     QQueue<DownloadTask> m_pendingTasks;
-    QMap<QNetworkReply*, DownloadTask> m_activeTasks;
+    QMap<QNetworkReply*, ActiveTask> m_activeTasks;
 
     qint64 m_totalCount{0};
     qint64 m_completedCount{0};

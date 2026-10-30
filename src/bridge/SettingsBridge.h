@@ -88,13 +88,13 @@ private:
     QSettings m_settings;
     int m_ramMb{4096};
     QString m_javaPath;
-    QString m_serverAddress{"mc.myserver.com"};
+    QString m_serverAddress{"lightcameraaction.frontlineand2engineers.dev"};
     int m_serverPort{25565};
     bool m_autoConnect{true};
-    QString m_authUrl{"http://localhost:8080"};
-    QString m_telegramBotUsername{"@LCAMinecraftBot"};
-    QString m_modpackUrl{"http://localhost:8080/api/modpack/manifest.json"};
-    QString m_clientBaseUrl{"http://localhost:8080/api/modpack/files/client-base.zip"};
+    QString m_authUrl{"https://https://apilightcameraaction.frontlineand2engineers.dev"};
+    QString m_telegramBotUsername{"@lightcameraaction_game"};
+    QString m_modpackUrl{"https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/manifest.json"};
+    QString m_clientBaseUrl{"https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/files/client-base.zip"};
     QString m_gameDir;
     bool m_isDevMode{false};
     QString m_detectedJavaInfo;

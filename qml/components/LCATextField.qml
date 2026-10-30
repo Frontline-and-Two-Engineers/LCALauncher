@@ -9,7 +9,7 @@ TextField {
     color: "#FFFFFF"
     placeholderTextColor: "#60677D"
     font.pixelSize: 14
-    font.family: "Segoe UI, Inter, Roboto, sans-serif"
+    font.family: "RazerF5"
     implicitHeight: 44
     selectByMouse: true
 

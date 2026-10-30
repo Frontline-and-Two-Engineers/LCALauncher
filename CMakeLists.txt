@@ -131,13 +131,19 @@ qt_add_qml_module(LCALauncher
         qml/components/LCAButton.qml
         qml/components/LCAProgressBar.qml
         qml/components/LCATextField.qml
+        qml/components/LCASplashIntro.qml
         qml/views/MainView.qml
         qml/views/LoginView.qml
         qml/views/SettingsView.qml
         qml/views/ConsoleView.qml
     RESOURCES
         assets/logo.png
+        assets/fate_logo.png
         assets/background.jpg
+        assets/fonts/dehinted-RazerF5-Regular.ttf
+        assets/fonts/dehinted-RazerF5-Regitalic.ttf
+        assets/fonts/dehinted-RazerF5-Bold.ttf
+        assets/fonts/dehinted-RazerF5-Bolditalic.ttf
         assets/icons/gamepad.svg
         assets/icons/settings.svg
         assets/icons/console.svg

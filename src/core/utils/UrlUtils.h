@@ -16,7 +16,7 @@ public:
     static QString sanitizeBaseUrl(const QString& raw) {
         QString url = raw.trimmed();
         if (url.isEmpty()) {
-            return "http://localhost:8080";
+            return "https://apilightcameraaction.frontlineand2engineers.dev";
         }
 
         // 0.0.0.0 is an inaddr-any bind address, invalid as a client destination
@@ -65,7 +65,7 @@ public:
             bot.remove(0, 1);
         }
         if (bot.isEmpty()) {
-            return "@LCAMinecraftBot";
+            return "@lightcameraaction_game";
         }
         return "@" + bot;
     }
@@ -76,7 +76,7 @@ public:
     static QString sanitizeModpackUrl(const QString& raw, const QString& baseUrl = QString()) {
         QString url = raw.trimmed();
         if (url.isEmpty()) {
-            QString base = baseUrl.isEmpty() ? "http://localhost:8080" : sanitizeBaseUrl(baseUrl);
+            QString base = baseUrl.isEmpty() ? "https://apilightcameraaction.frontlineand2engineers.dev" : sanitizeBaseUrl(baseUrl);
             return base + "/api/modpack/manifest.json";
         }
 

@@ -60,8 +60,8 @@ private:
     void clearSavedSession();
 
     QNetworkAccessManager m_network;
-    QString m_baseUrl{"http://localhost:8080"};
-    QString m_telegramBotUsername{"@LCAMinecraftBot"};
+    QString m_baseUrl{"https://apilightcameraaction.frontlineand2engineers.dev"};
+    QString m_telegramBotUsername{"@lightcameraaction_game"};
 
     UserSession m_session;
     QSettings m_settings;
@@ -71,6 +71,7 @@ private:
     QTimer* m_pollTimer{nullptr};
     QTimer* m_countdownTimer{nullptr};
     bool m_isPolling{false};
+    int m_pollErrorCount{0}; // consecutive network errors during polling
 };
 
 } // namespace LCA::Auth

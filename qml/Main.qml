@@ -11,26 +11,25 @@ ApplicationWindow {
     minimumWidth: 880
     minimumHeight: 560
     visible: true
-    title: "Light, Camera, Action! SEASON 3 | FROSTY WINTER"
+    title: "Light, Camera, Action! 3 | FROSTY WINTER"
     color: "#0F1118"
+    font.family: "RazerF5"
+
+    // Fonts are loaded globally in main.cpp via QFontDatabase::addApplicationFont;
+    // QML FontLoader duplicates are removed.
 
     property int currentTabIndex: 0 // 0: Main, 1: Settings, 2: Console, 3: Login
 
     Connections {
         target: launcherBridge
-        function onRequestLoginView() {
-            window.currentTabIndex = 3
-        }
+        function onRequestLoginView() { window.currentTabIndex = 3 }
     }
 
     Connections {
         target: authBridge
-        function onLoginSucceeded() {
-            window.currentTabIndex = 0
-        }
+        function onLoginSucceeded() { window.currentTabIndex = 0 }
     }
 
-    // ================= Background Image =================
     Image {
         id: bgImage
         anchors.fill: parent
@@ -41,7 +40,6 @@ ApplicationWindow {
         asynchronous: false
     }
 
-    // Atmospheric Frosted Overlay (Darkening Vignette for high contrast)
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
@@ -52,7 +50,6 @@ ApplicationWindow {
         }
     }
 
-    // Frosty Cyan Ambient Rim
     Rectangle {
         anchors.fill: parent
         color: "transparent"
@@ -64,7 +61,7 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        // ================= Sidebar (Liquid Glass) =================
+        // Sidebar
         Rectangle {
             Layout.preferredWidth: 230
             Layout.fillHeight: true
@@ -77,7 +74,6 @@ ApplicationWindow {
                 anchors.margins: 20
                 spacing: 20
 
-                // Launcher Title Logo
                 Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 105
@@ -93,34 +89,20 @@ ApplicationWindow {
                         spacing: 2
 
                         Image {
-                            id: logoImg
                             source: "qrc:/qt/qml/LCALauncher/assets/logo.png"
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 88
+                            Layout.preferredHeight: 74
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                             mipmap: true
                             asynchronous: false
-                        }
-
-                        Text {
-                            text: "Frontline&TwoEngineers"
-                            color: "#00E5FF"
-                            font.pixelSize: 10
-                            font.bold: true
-                            font.letterSpacing: 0.8
                             Layout.alignment: Qt.AlignHCenter
                         }
                     }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 1
-                    color: "#26FFFFFF"
-                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: "#26FFFFFF" }
 
-                // Nav Buttons
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
@@ -182,7 +164,6 @@ ApplicationWindow {
 
                 Item { Layout.fillHeight: true }
 
-                // User Profile Card at Bottom of Sidebar
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
@@ -200,9 +181,7 @@ ApplicationWindow {
                         spacing: 12
 
                         Rectangle {
-                            width: 40
-                            height: 40
-                            radius: 8
+                            width: 40; height: 40; radius: 8
                             color: "#3D2C344E"
                             border.color: "#40FFFFFF"
                             border.width: 1
@@ -214,7 +193,6 @@ ApplicationWindow {
                                 font.bold: true
                             }
                         }
-
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 2
@@ -230,6 +208,7 @@ ApplicationWindow {
                                 text: authBridge.isLoggedIn ? "Аккаунт сервера" : "Нажмите для входа"
                                 color: authBridge.isLoggedIn ? "#00FFA3" : "#FFB300"
                                 font.pixelSize: 11
+                                font.italic: true
                             }
                         }
                     }
@@ -239,13 +218,23 @@ ApplicationWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: window.currentTabIndex = 3 // Go to login view
+                        onClicked: window.currentTabIndex = 3
                     }
+                }
+
+                Image {
+                    source: "qrc:/qt/qml/LCALauncher/assets/fate_logo.png"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 15
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    mipmap: true
+                    asynchronous: false
+                    Layout.alignment: Qt.AlignHCenter
                 }
             }
         }
 
-        // ================= Content Area =================
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -262,6 +251,38 @@ ApplicationWindow {
                     onOpenSettingsRequested: window.currentTabIndex = 1
                 }
             }
+        }
+    }
+
+    // ================= Startup Splash Animation =================
+    // Loaded via Loader so we can unload it (freeing MultiEffect / Shape)
+    // once the intro completes. Using sourceComponent (not source URL) because
+    // LCASplashIntro.qml lives in components/ and is exposed via `import "components"`.
+    Loader {
+        id: splashLoader
+        anchors.fill: parent
+        z: 9999
+        active: true
+        sourceComponent: splashComponent
+        asynchronous: false
+
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                console.error("[Splash] Failed to load LCASplashIntro")
+                splashLoader.active = false
+            } else if (status === Loader.Ready && item) {
+                item.introFinished.connect(function() {
+                    // Defer unloading: we are inside the signal emission right now.
+                    Qt.callLater(function() { splashLoader.active = false })
+                })
+            }
+        }
+    }
+
+    Component {
+        id: splashComponent
+        LCASplashIntro {
+            anchors.fill: parent
         }
     }
 }
