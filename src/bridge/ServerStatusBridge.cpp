@@ -56,7 +56,7 @@ QString ServerStatusBridge::statusText() const {
     if (m_isOnline) {
         return "СЕРВЕР ОНЛАЙН";
     }
-    return "СЕРВЕР ОФФЛАЙН";
+    return "НЕТ ПОДКЛЮЧЕНИЯ";
 }
 
 QString ServerStatusBridge::statusColor() const {

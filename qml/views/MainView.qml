@@ -45,19 +45,6 @@ Item {
 
                             RowLayout {
                                 spacing: 10
-                                Rectangle {
-                                    width: 8
-                                    height: 8
-                                    radius: 4
-                                    color: serverStatusBridge.statusColor
-
-                                    SequentialAnimation on opacity {
-                                        running: serverStatusBridge.isOnline
-                                        loops: Animation.Infinite
-                                        NumberAnimation { from: 1.0; to: 0.4; duration: 900; easing.type: Easing.InOutQuad }
-                                        NumberAnimation { from: 0.4; to: 1.0; duration: 900; easing.type: Easing.InOutQuad }
-                                    }
-                                }
                                 Text {
                                     text: serverStatusBridge.statusText
                                     color: serverStatusBridge.statusColor
@@ -66,21 +53,20 @@ Item {
                                     font.letterSpacing: 1.5
                                 }
                                 Text {
-                                    text: "•  " + settingsBridge.serverAddress + (settingsBridge.serverPort !== 25565 ? (":" + settingsBridge.serverPort) : "")
                                     color: "#6E7790"
                                     font.pixelSize: 11
                                 }
                             }
 
                             Text {
-                                text: "Light, Camera, Action!"
+                                text: "Основной сервер"
                                 color: "#FFFFFF"
                                 font.pixelSize: 32
                                 font.bold: true
                             }
 
                             Text {
-                                text: "Light, Camera, Action! 3 СЕЗОН | FROSTY WINTER\nПри поддержке dead_seniordev"
+                                text: "Light, Camera, Action! 3 СЕЗОН | FROSTY WINTER"
                                 color: "#9EA8C2"
                                 font.pixelSize: 14
                                 elide: Text.ElideRight
@@ -301,6 +287,7 @@ Item {
                         model: channelPostsBridge.posts
 
                         Rectangle {
+                            id: postCard
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.minimumHeight: 140
@@ -314,15 +301,64 @@ Item {
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
 
+                            readonly property real cardAvailableWidth: Math.max(100, postCard.width - 24)
+
+                            // Dynamic adaptive font size: 11px on compact window, up to 13px on fullscreen
+                            readonly property real adaptiveFontSize: {
+                                var progress = (postCard.width - 210) / 280.0;
+                                var clamped = Math.max(0.0, Math.min(1.0, progress));
+                                return Math.round(11.0 + clamped * 2.0);
+                            }
+
+                            // Dynamic adaptive image height: expands in fullscreen to match 16:9 / natural aspect ratio, minimizing crop
+                            readonly property real adaptiveImageHeight: {
+                                if (!modelData.image_url) return 0;
+
+                                var naturalRatio = 9.0 / 16.0; // default 16:9 ratio
+                                if (postImg.status === Image.Ready && postImg.implicitWidth > 0 && postImg.implicitHeight > 0) {
+                                    naturalRatio = postImg.implicitHeight / postImg.implicitWidth;
+                                }
+
+                                var idealHeight = cardAvailableWidth * naturalRatio;
+                                var maxAllowedByCard = Math.max(82, postCard.height * 0.48);
+                                var minAllowed = Math.min(82, maxAllowedByCard);
+
+                                var target = Math.max(minAllowed, Math.min(idealHeight, maxAllowedByCard));
+                                return Math.min(target, 320);
+                            }
+
+                            readonly property real topItemHeight: (modelData.image_url !== "") 
+                                ? adaptiveImageHeight 
+                                : (dateRowNoImg.visible ? dateRowNoImg.implicitHeight : 0)
+
+                            readonly property real footerHeight: Math.max(18, Math.round(adaptiveFontSize * 1.5))
+
+                            readonly property real availTextHeight: Math.max(
+                                30, 
+                                (postCard.height - 24) - topItemHeight - footerHeight - (cardCol.spacing * 2)
+                            )
+
+                            FontMetrics {
+                                id: textFontMetrics
+                                font: postText.font
+                            }
+
+                            readonly property int maxLines: {
+                                var lineH = (textFontMetrics.lineSpacing > 0 ? textFontMetrics.lineSpacing : 14.0) * postText.lineHeight;
+                                return Math.max(2, Math.floor(availTextHeight / lineH));
+                            }
+
                             ColumnLayout {
+                                id: cardCol
                                 anchors.fill: parent
                                 anchors.margins: 12
                                 spacing: 8
 
                                 // Post Image (if present)
                                 Rectangle {
+                                    id: imgContainer
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 82
+                                    Layout.preferredHeight: postCard.adaptiveImageHeight
                                     radius: 10
                                     clip: true
                                     color: "#121520"
@@ -343,7 +379,7 @@ Item {
                                         anchors.bottom: parent.bottom
                                         anchors.left: parent.left
                                         anchors.right: parent.right
-                                        height: 26
+                                        height: Math.max(26, Math.round(imgContainer.height * 0.25))
                                         gradient: Gradient {
                                             GradientStop { position: 0.0; color: "#00000000" }
                                             GradientStop { position: 1.0; color: "#B30A0D15" }
@@ -355,20 +391,20 @@ Item {
                                         anchors.top: parent.top
                                         anchors.left: parent.left
                                         anchors.margins: 6
-                                        height: 18
-                                        radius: 9
+                                        height: Math.max(18, Math.round(postCard.adaptiveFontSize * 1.5))
+                                        radius: height / 2
                                         color: "#D90B0E17"
                                         border.color: "#33FFFFFF"
                                         border.width: 1
 
                                         RowLayout {
                                             anchors.fill: parent
-                                            anchors.leftMargin: 6
-                                            anchors.rightMargin: 6
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
                                             Text {
                                                 text: modelData.formatted_date
                                                 color: "#A2ADC7"
-                                                font.pixelSize: 9
+                                                font.pixelSize: Math.max(9, Math.round(postCard.adaptiveFontSize * 0.85))
                                                 font.bold: true
                                             }
                                         }
@@ -377,13 +413,14 @@ Item {
 
                                 // Date & Channel badge if no image
                                 RowLayout {
+                                    id: dateRowNoImg
                                     Layout.fillWidth: true
                                     spacing: 6
                                     visible: modelData.image_url === ""
 
                                     Rectangle {
-                                        width: 22
-                                        height: 22
+                                        width: Math.max(22, Math.round(postCard.adaptiveFontSize * 1.8))
+                                        height: width
                                         radius: 6
                                         color: "#2600E5FF"
                                         border.color: "#4000E5FF"
@@ -392,7 +429,7 @@ Item {
                                         LCAIcon {
                                             anchors.centerIn: parent
                                             source: "qrc:/qt/qml/LCALauncher/assets/icons/telegram.svg"
-                                            size: 12
+                                            size: Math.max(12, Math.round(postCard.adaptiveFontSize))
                                             color: "#00E5FF"
                                         }
                                     }
@@ -400,7 +437,7 @@ Item {
                                     Text {
                                         text: modelData.formatted_date
                                         color: "#8E99B3"
-                                        font.pixelSize: 11
+                                        font.pixelSize: postCard.adaptiveFontSize
                                         font.bold: true
                                         Layout.alignment: Qt.AlignVCenter
                                     }
@@ -410,26 +447,29 @@ Item {
 
                                 // Post Text snippet
                                 Text {
+                                    id: postText
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     text: modelData.text !== "" ? modelData.text : "Публикация в канале"
                                     color: "#D5DDEC"
-                                    font.pixelSize: 11
+                                    font.pixelSize: postCard.adaptiveFontSize
                                     wrapMode: Text.Wrap
                                     elide: Text.ElideRight
-                                    maximumLineCount: modelData.image_url !== "" ? 3 : 5
+                                    maximumLineCount: postCard.maxLines
                                     lineHeight: 1.25
                                 }
 
                                 // Card Footer: link & view count
                                 RowLayout {
+                                    id: cardFooter
                                     Layout.fillWidth: true
+                                    Layout.preferredHeight: postCard.footerHeight
                                     spacing: 4
 
                                     Text {
                                         text: "Читать в Telegram"
                                         color: cardMouse.containsMouse ? "#00FFA3" : "#00E5FF"
-                                        font.pixelSize: 10
+                                        font.pixelSize: Math.max(10, Math.round(postCard.adaptiveFontSize * 0.9))
                                         font.bold: true
                                         Behavior on color { ColorAnimation { duration: 150 } }
                                     }
@@ -442,7 +482,7 @@ Item {
 
                                         LCAIcon {
                                             source: "qrc:/qt/qml/LCALauncher/assets/icons/eye.svg"
-                                            size: 11
+                                            size: Math.max(11, Math.round(postCard.adaptiveFontSize * 0.95))
                                             color: "#6B758E"
                                             Layout.alignment: Qt.AlignVCenter
                                         }
@@ -450,7 +490,7 @@ Item {
                                         Text {
                                             text: modelData.views
                                             color: "#6B758E"
-                                            font.pixelSize: 10
+                                            font.pixelSize: Math.max(10, Math.round(postCard.adaptiveFontSize * 0.9))
                                             Layout.alignment: Qt.AlignVCenter
                                         }
                                     }

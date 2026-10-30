@@ -202,13 +202,13 @@ void SettingsBridge::autoDetectJava() {
 
 void SettingsBridge::resetToDefaults() {
     m_ramMb = 4096;
-    m_serverAddress = "mc.myserver.com";
+    m_serverAddress = "lightcameraaction.frontlineand2engineers.dev";
     m_serverPort = 25565;
     m_autoConnect = true;
-    m_authUrl = "http://127.0.0.1:8080";
+    m_authUrl = "https://apilightcameraaction.frontlineand2engineers.dev";
     m_telegramBotUsername = "@lightcameraaction_game";
-    m_modpackUrl = "http://127.0.0.1:8080/api/modpack/manifest.json";
-    m_clientBaseUrl = "http://127.0.0.1:8080/api/modpack/files/client-base.zip";
+    m_modpackUrl = "https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/manifest.json";
+    m_clientBaseUrl = "https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/files/client-base.zip";
     m_gameDir = Utils::FileUtils::defaultGameDir();
 
     if (m_authService) {
