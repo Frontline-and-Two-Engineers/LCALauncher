@@ -16,8 +16,8 @@
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
 
-    app.setOrganizationName("LCAProject");
-    app.setOrganizationDomain("lcaproject.org");
+    app.setOrganizationName("Frontline And Two Engineers");
+    app.setOrganizationDomain("frontlineand2engineers.dev");
     app.setApplicationName("LCALauncher");
     app.setApplicationVersion("1.0.0");
     app.setWindowIcon(QIcon(":/qt/qml/LCALauncher/assets/logo.png"));

@@ -13,11 +13,11 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName",      "LCA Project\0"
-            VALUE "FileDescription",  "LCA Minecraft Launcher (NeoForge 1.21.1)\0"
+            VALUE "CompanyName",      "Frontline And Two Engineers\0"
+            VALUE "FileDescription",  "Live Camera Action! Launcher\0"
             VALUE "FileVersion",      "1.0.0.0\0"
             VALUE "InternalName",     "LCALauncher\0"
-            VALUE "LegalCopyright",   "Copyright (C) 2026 LCA Project\0"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 Frontline And Two Engineers\0"
             VALUE "OriginalFilename", "LCALauncher.exe\0"
             VALUE "ProductName",      "LCA Launcher\0"
             VALUE "ProductVersion",   "1.0.0.0\0"

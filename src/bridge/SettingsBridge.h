@@ -91,7 +91,7 @@ private:
     QString m_serverAddress{"lightcameraaction.frontlineand2engineers.dev"};
     int m_serverPort{25565};
     bool m_autoConnect{true};
-    QString m_authUrl{"https://https://apilightcameraaction.frontlineand2engineers.dev"};
+    QString m_authUrl{"https://apilightcameraaction.frontlineand2engineers.dev"};
     QString m_telegramBotUsername{"@lightcameraaction_game"};
     QString m_modpackUrl{"https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/manifest.json"};
     QString m_clientBaseUrl{"https://apilightcameraaction.frontlineand2engineers.dev/api/modpack/files/client-base.zip"};

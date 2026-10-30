@@ -186,7 +186,7 @@ if(APPLE)
     set_target_properties(LCALauncher PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME "LCALauncher"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "org.lcaproject.LCALauncher"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "frontlineand2engineers.dev"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
         MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
     )
@@ -218,9 +218,9 @@ if(UNIX AND NOT APPLE)
 endif()
 
 set(CPACK_PACKAGE_NAME "LCALauncher")
-set(CPACK_PACKAGE_VENDOR "LCA Project")
+set(CPACK_PACKAGE_VENDOR "Frontline And Two Engineers")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Minecraft 1.21.1 NeoForge Custom Launcher")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Light Camera Action! Launcher")
 
 if(APPLE)
     set(CPACK_GENERATOR "DragNDrop;TGZ")
@@ -228,7 +228,7 @@ elseif(WIN32)
     set(CPACK_GENERATOR "ZIP;NSIS")
 else()
     set(CPACK_GENERATOR "TGZ;DEB")
-    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "LCA Team")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Frontline And Two Engineers")
 endif()
 
 include(CPack)
