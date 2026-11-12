@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     app.setOrganizationName("Frontline And Two Engineers");
     app.setOrganizationDomain("frontlineand2engineers.dev");
     app.setApplicationName("LCALauncher");
-    app.setApplicationVersion("1.0.0");
+    app.setApplicationVersion("1.2.0");
     app.setWindowIcon(QIcon(":/qt/qml/LCALauncher/assets/logo.png"));
 
     QQuickStyle::setStyle("Basic");
