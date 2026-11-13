@@ -14,12 +14,17 @@
 #include "bridge/ChannelPostsBridge.h"
 
 int main(int argc, char *argv[]) {
+#ifdef Q_OS_MACOS
+    if (!qEnvironmentVariableIsSet("QSG_RENDER_LOOP")) {
+        qputenv("QSG_RENDER_LOOP", "basic");
+    }
+#endif
     QGuiApplication app(argc, argv);
 
     app.setOrganizationName("Frontline And Two Engineers");
     app.setOrganizationDomain("frontlineand2engineers.dev");
     app.setApplicationName("LCALauncher");
-    app.setApplicationVersion("1.2.0");
+    app.setApplicationVersion("1.2.1");
     app.setWindowIcon(QIcon(":/qt/qml/LCALauncher/assets/logo.png"));
 
     QQuickStyle::setStyle("Basic");

@@ -69,33 +69,36 @@ Item {
                     id: logListView
                     anchors.fill: parent
                     anchors.margins: 16
-                    model: launcherBridge.consoleLogs
+                    model: launcherBridge.logModel
                     spacing: 4
 
-                    delegate: TextEdit {
+                    delegate: Text {
                         width: logListView.width
-                        text: modelData
-                        readOnly: true
-                        selectByMouse: true
-                        activeFocusOnPress: false
-                        selectionColor: "#4000E5FF"
-                        selectedTextColor: "#FFFFFF"
+                        text: model.display
                         font.family: "JetBrains Mono, Menlo, Consolas, monospace"
                         font.pixelSize: 12
-                        wrapMode: TextEdit.WrapAnywhere
+                        wrapMode: Text.Wrap
                         color: {
-                            if (modelData.indexOf("[ERR]") !== -1 || modelData.indexOf("Exception") !== -1 || modelData.indexOf("ERROR") !== -1)
+                            if (model.display.indexOf("[ERR]") !== -1 || model.display.indexOf("Exception") !== -1 || model.display.indexOf("ERROR") !== -1)
                                 return "#FF5252"
-                            if (modelData.indexOf("[WARN]") !== -1)
+                            if (model.display.indexOf("[WARN]") !== -1)
                                 return "#FFD740"
-                            if (modelData.indexOf("[Launcher]") !== -1)
+                            if (model.display.indexOf("[Launcher]") !== -1)
                                 return "#00E5FF"
                             return "#C8D0E0"
                         }
                     }
 
                     onCountChanged: {
-                        logListView.positionViewAtEnd()
+                        if (logListView.visible) {
+                            Qt.callLater(logListView.positionViewAtEnd)
+                        }
+                    }
+
+                    onVisibleChanged: {
+                        if (visible) {
+                            Qt.callLater(logListView.positionViewAtEnd)
+                        }
                     }
                 }
             }

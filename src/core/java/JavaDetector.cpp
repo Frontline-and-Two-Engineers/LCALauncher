@@ -28,7 +28,7 @@ JavaInfo JavaDetector::inspectJava(const QString& javaExecutablePath) {
         if (match.hasMatch()) {
             info.majorVersion = match.captured(1).toInt();
             info.versionString = match.captured(0);
-            info.isValid = (info.majorVersion >= 21);
+            info.isValid = (info.majorVersion == 21);
             if (info.isValid) return info;
         }
     }
@@ -47,7 +47,7 @@ JavaInfo JavaDetector::inspectJava(const QString& javaExecutablePath) {
 
     info.majorVersion = parseMajorVersion(output);
     info.versionString = output.split('\n').value(0).trimmed();
-    info.isValid = (info.majorVersion >= 21);
+    info.isValid = (info.majorVersion == 21);
 
     return info;
 }
@@ -67,13 +67,23 @@ int JavaDetector::parseMajorVersion(const QString& versionOutput) {
 QStringList JavaDetector::getCandidatePaths() {
     QStringList candidates;
 
-    // 1. Local launcher runtime directory
+    // 1. Local launcher runtime directory (scan any extracted Temurin 21 subdir as well)
     QString localRuntime = Utils::FileUtils::defaultLauncherDataDir() + "/runtime";
 #ifdef Q_OS_WIN
-    candidates << localRuntime + "/java-21/bin/java.exe";
+    const QString javaBinName = "java.exe";
 #else
-    candidates << localRuntime + "/java-21/bin/java";
+    const QString javaBinName = "java";
 #endif
+    candidates << localRuntime + "/java-21/bin/" + javaBinName;
+    if (QDir(localRuntime).exists()) {
+        QDirIterator rtIt(localRuntime, QStringList() << javaBinName, QDir::Files, QDirIterator::Subdirectories);
+        while (rtIt.hasNext()) {
+            QString p = rtIt.next();
+            if (p.contains("/bin/") || p.contains("\\bin\\")) {
+                candidates << p;
+            }
+        }
+    }
 
     // 2. JAVA_HOME
     QString javaHome = qEnvironmentVariable("JAVA_HOME");
@@ -190,7 +200,7 @@ JavaInfo JavaDetector::detectBestJava(const QString& customPath) {
 
     for (const QString& candidate : getCandidatePaths()) {
         JavaInfo info = inspectJava(candidate);
-        if (info.isValid && info.majorVersion >= 21) {
+        if (info.isValid && info.majorVersion == 21) {
             return info;
         }
     }

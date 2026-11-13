@@ -20,13 +20,62 @@ namespace {
 constexpr const char* LWJGL_VERSION = "3.3.3";
 }
 
+LogListModel::LogListModel(QObject* parent)
+    : QAbstractListModel(parent) {}
+
+int LogListModel::rowCount(const QModelIndex& parent) const {
+    return parent.isValid() ? 0 : m_lines.size();
+}
+
+QVariant LogListModel::data(const QModelIndex& index, int role) const {
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_lines.size()) return {};
+    if (role == Qt::DisplayRole) return m_lines.at(index.row());
+    return {};
+}
+
+void LogListModel::appendBatch(const QStringList& lines) {
+    if (lines.isEmpty()) return;
+
+    QStringList incoming = lines;
+    if (incoming.size() > MaxLines) {
+        incoming = incoming.mid(incoming.size() - MaxLines);
+    }
+
+    const int overflow = (m_lines.size() + incoming.size()) - MaxLines;
+    if (overflow > 0) {
+        const int removeCount = qMin(overflow, m_lines.size());
+        beginRemoveRows(QModelIndex(), 0, removeCount - 1);
+        m_lines.erase(m_lines.begin(), m_lines.begin() + removeCount);
+        endRemoveRows();
+    }
+
+    const int first = m_lines.size();
+    const int last = first + incoming.size() - 1;
+    beginInsertRows(QModelIndex(), first, last);
+    m_lines.append(incoming);
+    endInsertRows();
+}
+
+void LogListModel::clear() {
+    if (m_lines.isEmpty()) return;
+    beginResetModel();
+    m_lines.clear();
+    endResetModel();
+}
+
+const QStringList& LogListModel::lines() const { return m_lines; }
+
 LauncherBridge::LauncherBridge(Auth::AuthService* authService, SettingsBridge* settings, QObject* parent)
     : QObject(parent)
     , m_authService(authService)
     , m_settings(settings)
     , m_syncEngine(new Sync::SyncEngine(m_settings->gameDir(), this))
     , m_gameProcess(new Launch::GameProcess(this))
+    , m_logModel(new LogListModel(this))
 {
+    m_logFlushTimer.setSingleShot(true);
+    m_logFlushTimer.setInterval(100);
+    connect(&m_logFlushTimer, &QTimer::timeout, this, &LauncherBridge::flushLogs);
     connect(m_syncEngine, &Sync::SyncEngine::statusChanged, this, [this](const QString& status) {
         m_statusText = status;
         emit statusChanged();
@@ -73,19 +122,32 @@ double LauncherBridge::progressPercent() const { return m_progressPercent; }
 QString LauncherBridge::currentFile() const { return m_currentFile; }
 bool LauncherBridge::isBusy() const { return m_isBusy; }
 bool LauncherBridge::isGameRunning() const { return m_gameProcess->isRunning(); }
-QStringList LauncherBridge::consoleLogs() const { return m_consoleLogs; }
+QAbstractListModel* LauncherBridge::logModel() const { return m_logModel; }
 
 void LauncherBridge::appendLog(const QString& line) {
-    m_consoleLogs.append(line);
-    if (m_consoleLogs.size() > 1000) m_consoleLogs.removeFirst();
+    m_pendingLogs.append(line);
     emit logAdded(line);
-    emit logsChanged();
+    if (!m_logFlushTimer.isActive()) {
+        m_logFlushTimer.start();
+    }
 }
 
-void LauncherBridge::clearLogs() { m_consoleLogs.clear(); emit logsChanged(); }
+void LauncherBridge::flushLogs() {
+    if (m_pendingLogs.isEmpty()) return;
+    QStringList batch;
+    batch.swap(m_pendingLogs);
+    m_logModel->appendBatch(batch);
+}
+
+void LauncherBridge::clearLogs() {
+    m_logFlushTimer.stop();
+    m_pendingLogs.clear();
+    m_logModel->clear();
+}
 
 void LauncherBridge::copyLogsToClipboard() {
-    QGuiApplication::clipboard()->setText(m_consoleLogs.join("\n"));
+    flushLogs();
+    QGuiApplication::clipboard()->setText(m_logModel->lines().join("\n"));
 }
 
 void LauncherBridge::killGame() { m_gameProcess->kill(); }
@@ -437,13 +499,13 @@ void LauncherBridge::doActualGameLaunch() {
             const bool isBootstrap    = fileName.startsWith("bootstraplauncher-");
             const bool isSecureJar    = fileName.startsWith("securejarhandler-");
             const bool isJarJar       = fileName.startsWith("JarJarFileSystems-");
-            // Base ASM only: matches asm-9.x.jar, NOT asm-analysis/asm-tree/asm-commons/asm-util/asm-bom/asm-test
-            const bool isBaseAsm      = normJar.contains("/org/ow2/asm/asm/")
-                                        && fileName.startsWith("asm-")
+            // ASM boot modules: asm, asm-tree, asm-commons, asm-util, asm-analysis (excluding bom/test)
+            const bool isAsmModule    = normJar.contains("/org/ow2/asm/")
+                                        && fileName.startsWith("asm")
                                         && !fileName.startsWith("asm-bom")
                                         && !fileName.startsWith("asm-test");
 
-            if (isBootstrap || isSecureJar || isJarJar || isBaseAsm) {
+            if (isBootstrap || isSecureJar || isJarJar || isAsmModule) {
                 config.modulePath.append(jar);
             }
 

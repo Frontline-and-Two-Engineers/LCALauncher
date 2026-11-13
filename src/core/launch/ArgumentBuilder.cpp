@@ -21,7 +21,7 @@ QStringList ArgumentBuilder::buildJvmArguments(const LaunchConfig& config) {
 
     // 3. System and brand properties
     args << "-Dminecraft.launcher.brand=LCALauncher";
-    args << "-Dminecraft.launcher.version=1.2.0";
+    args << "-Dminecraft.launcher.version=1.2.1";
     if (!config.nativesDir.isEmpty()) {
         QString nativeDir = QDir::toNativeSeparators(config.nativesDir);
         args << QString("-Djava.library.path=%1").arg(nativeDir);
