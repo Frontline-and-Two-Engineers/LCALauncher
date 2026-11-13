@@ -21,7 +21,7 @@ QStringList ArgumentBuilder::buildJvmArguments(const LaunchConfig& config) {
 
     // 3. System and brand properties
     args << "-Dminecraft.launcher.brand=LCALauncher";
-    args << "-Dminecraft.launcher.version=1.2.1";
+    args << "-Dminecraft.launcher.version=1.2.2";
     if (!config.nativesDir.isEmpty()) {
         QString nativeDir = QDir::toNativeSeparators(config.nativesDir);
         args << QString("-Djava.library.path=%1").arg(nativeDir);
@@ -101,9 +101,9 @@ QStringList ArgumentBuilder::buildGameArguments(const LaunchConfig& config) {
     args.append(config.extraGameArgs);
 
     // Fast direct connection to server
-    if (config.autoConnect && !config.serverAddress.isEmpty()) {
-        args << "--quickPlayMultiplayer" << QString("%1:%2").arg(config.serverAddress).arg(config.serverPort);
-    }
+    // if (config.autoConnect && !config.serverAddress.isEmpty()) {
+    //     args << "--quickPlayMultiplayer" << QString("%1:%2").arg(config.serverAddress).arg(config.serverPort);
+    // }
 
     return args;
 }

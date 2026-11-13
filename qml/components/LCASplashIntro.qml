@@ -101,11 +101,11 @@ Item {
             ShapePath {
                 fillColor: "#FFFFFF"
                 strokeColor: "transparent"
-                startX: -150
-                startY: -150
-                PathLine { x: root.width + 150; y: -150 }
-                PathLine { x: root.width + 150; y: root.height + 150 }
-                PathLine { x: -150; y: -150 }
+                startX: 0
+                startY: 0
+                PathLine { x: root.width; y: 0 }
+                PathLine { x: root.width; y: root.height }
+                PathLine { x: 0; y: 0 }
             }
         }
     }
@@ -123,11 +123,11 @@ Item {
             ShapePath {
                 fillColor: "#FFFFFF"
                 strokeColor: "transparent"
-                startX: -150
-                startY: -150
-                PathLine { x: root.width + 150; y: root.height + 150 }
-                PathLine { x: -150; y: root.height + 150 }
-                PathLine { x: -150; y: -150 }
+                startX: 0
+                startY: 0
+                PathLine { x: root.width; y: root.height }
+                PathLine { x: 0; y: root.height }
+                PathLine { x: 0; y: 0 }
             }
         }
     }
@@ -138,6 +138,7 @@ Item {
         Item {
             width: root.width
             height: root.height
+            layer.enabled: true
 
             Rectangle {
                 anchors.fill: parent
@@ -165,18 +166,18 @@ Item {
         }
     }
 
-    // --- Content instance 1 ---
+    // --- Content instance 1 (pre-loaded so GPU textures are ready before cut on D3D11) ---
     Loader {
         id: contentLoader1
-        active: root.splitActive
+        active: true
         visible: false
         sourceComponent: halfContentComponent
     }
 
-    // --- Content instance 2 ---
+    // --- Content instance 2 (pre-loaded so GPU textures are ready before cut on D3D11) ---
     Loader {
         id: contentLoader2
-        active: root.splitActive
+        active: true
         visible: false
         sourceComponent: halfContentComponent
     }

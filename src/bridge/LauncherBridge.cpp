@@ -509,9 +509,13 @@ void LauncherBridge::doActualGameLaunch() {
                 config.modulePath.append(jar);
             }
 
-            // --- downloadOnly exclusion (jars that exist on disk but must not be classloaded) ---
+            // --- downloadOnly / foreign authlib exclusion ---
             bool isDownloadOnly = false;
-            if (fileName.contains("neoforge-") && fileName.contains("universal")) {
+            const bool isForeignAuthlib = normJar.contains("/by/ely/")
+                                          || (fileName.startsWith("authlib-") && !normJar.contains("/com/mojang/authlib/"));
+            if (isForeignAuthlib) {
+                isDownloadOnly = true;
+            } else if (fileName.contains("neoforge-") && fileName.contains("universal")) {
                 isDownloadOnly = true;
             } else if (fileName.contains("client-") &&
                        (fileName.contains("-srg") || fileName.contains("-slim") || fileName.contains("-extra"))) {
@@ -527,6 +531,18 @@ void LauncherBridge::doActualGameLaunch() {
     }
 
     if (!clientJar.isEmpty() && QFile::exists(clientJar)) addClasspath(clientJar);
+
+    // Default to Russian on first launch if options.txt does not exist yet
+    if (!config.gameDir.isEmpty()) {
+        Utils::FileUtils::ensureDir(config.gameDir);
+        const QString optionsPath = QDir(config.gameDir).filePath("options.txt");
+        if (!QFile::exists(optionsPath)) {
+            QFile optionsFile(optionsPath);
+            if (optionsFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                optionsFile.write("lang:ru_ru\n");
+            }
+        }
+    }
 
     m_statusText = "Запуск Minecraft...";
     emit statusChanged();

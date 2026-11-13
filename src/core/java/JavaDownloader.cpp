@@ -26,12 +26,23 @@ struct ExtractResult {
 
 ExtractResult extractAndValidateJava(const QString& archivePath, const QString& extractDir) {
     ExtractResult result;
-    if (!Utils::ArchiveUtils::extractTarGz(archivePath, extractDir)
-        && !Utils::ArchiveUtils::extractZip(archivePath, extractDir)) {
+    const qint64 archiveSize = QFileInfo(archivePath).size();
+    if (archiveSize < 1024 * 1024) {
+        Utils::FileUtils::removeFile(archivePath);
+        result.error = QString("Скачанный архив Java повреждён или пуст (%1 байт)").arg(archiveSize);
+        return result;
+    }
+
+    const bool isZip = archivePath.endsWith(".zip", Qt::CaseInsensitive);
+    const bool extracted = isZip
+        ? (Utils::ArchiveUtils::extractZip(archivePath, extractDir) || Utils::ArchiveUtils::extractTarGz(archivePath, extractDir))
+        : (Utils::ArchiveUtils::extractTarGz(archivePath, extractDir) || Utils::ArchiveUtils::extractZip(archivePath, extractDir));
+    Utils::FileUtils::removeFile(archivePath);
+
+    if (!extracted) {
         result.error = "Не удалось распаковать архив Java";
         return result;
     }
-    Utils::FileUtils::removeFile(archivePath);
 
 #if defined(Q_OS_WIN)
     const QString targetName = "java.exe";
