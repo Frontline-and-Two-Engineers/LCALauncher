@@ -338,6 +338,145 @@ Item {
                     }
                 }
 
+                // 4.5. Launcher Updates
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: updateSettingsCol.implicitHeight + 48
+                    radius: 14
+                    color: "#B3101424"
+                    border.color: "#2EFFFFFF"
+                    border.width: 1
+
+                    ColumnLayout {
+                        id: updateSettingsCol
+                        anchors.fill: parent
+                        anchors.margins: 24
+                        spacing: 14
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Text {
+                                    text: "Обновления лаунчера"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    text: "Текущая версия: v" + updateBridge.currentVersion
+                                    color: "#8E98B0"
+                                    font.pixelSize: 12
+                                }
+                            }
+
+                            LCAButton {
+                                visible: updateBridge.updateAvailable
+                                text: updateBridge.isInstalling ? "Установка..." : (updateBridge.isDownloading ? "Загрузка..." : "Обновить до v" + updateBridge.latestVersion)
+                                isPrimary: true
+                                textColor: "#0A0D18"
+                                enabled: !updateBridge.isDownloading && !updateBridge.isInstalling
+                                Layout.preferredWidth: 190
+                                Layout.preferredHeight: 38
+                                onClicked: updateBridge.startUpdate()
+                            }
+
+                            LCAButton {
+                                text: updateBridge.isChecking ? "Проверка..." : "Проверить"
+                                enabled: !updateBridge.isChecking && !updateBridge.isDownloading && !updateBridge.isInstalling
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 38
+                                onClicked: updateBridge.checkForUpdates(false)
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Text {
+                                    text: "Ветка обновлений"
+                                    color: "#E0E6F2"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    text: updateBridge.updateChannel === "dev"
+                                          ? "dev — включая тестовые пререлизы"
+                                          : "main — только стабильные релизы"
+                                    color: "#7E879E"
+                                    font.pixelSize: 11
+                                    font.italic: true
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.preferredWidth: 156
+                                Layout.preferredHeight: 36
+                                radius: 8
+                                color: "#80090C16"
+                                border.color: "#2EFFFFFF"
+                                border.width: 1
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 3
+                                    spacing: 4
+
+                                    Repeater {
+                                        model: ["main", "dev"]
+
+                                        Rectangle {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            radius: 6
+                                            property bool selected: updateBridge.updateChannel === modelData
+                                            color: selected ? "#00E5FF" : (chanMouse.containsMouse ? "#26FFFFFF" : "transparent")
+
+                                            Behavior on color { ColorAnimation { duration: 140 } }
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: modelData
+                                                color: selected ? "#0A0D18" : "#A6B2CC"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
+
+                                            MouseArea {
+                                                id: chanMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                enabled: !updateBridge.isDownloading && !updateBridge.isInstalling
+                                                onClicked: updateBridge.updateChannel = modelData
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: updateBridge.statusText !== "" || updateBridge.errorText !== ""
+                            text: updateBridge.errorText !== "" ? updateBridge.errorText : updateBridge.statusText
+                            color: updateBridge.errorText !== "" ? "#FF6B6B" : (updateBridge.updateAvailable ? "#00E5FF" : "#00FFA3")
+                            font.pixelSize: 12
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+
                 // 5. Reset & Defaults
                 RowLayout {
                     visible: settingsBridge.isDevMode

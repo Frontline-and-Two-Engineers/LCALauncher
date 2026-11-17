@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(LCALauncher VERSION 1.2.2 LANGUAGES CXX)
+project(LCALauncher VERSION 1.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -120,6 +120,10 @@ qt_add_executable(LCALauncher
     src/bridge/ServerStatusBridge.cpp
     src/bridge/ChannelPostsBridge.h
     src/bridge/ChannelPostsBridge.cpp
+    src/bridge/UpdateBridge.h
+    src/bridge/UpdateBridge.cpp
+    src/bridge/DocsBridge.h
+    src/bridge/DocsBridge.cpp
 )
 
 qt_add_qml_module(LCALauncher
@@ -133,6 +137,7 @@ qt_add_qml_module(LCALauncher
         qml/components/LCATextField.qml
         qml/components/LCASplashIntro.qml
         qml/views/MainView.qml
+        qml/views/InfoView.qml
         qml/views/LoginView.qml
         qml/views/SettingsView.qml
         qml/views/ConsoleView.qml
@@ -155,6 +160,15 @@ qt_add_qml_module(LCALauncher
         assets/icons/check.svg
         assets/icons/arrow-left.svg
         assets/icons/eye.svg
+        assets/icons/book.svg
+        assets/docs/index.json
+        assets/docs/rules.md
+        assets/docs/guides.md
+        assets/docs/faq.md
+        assets/docs/mods/create.md
+        assets/docs/mods/tech.md
+        assets/docs/mods/combat.md
+        assets/docs/mods/world_food.md
 )
 
 target_include_directories(LCALauncher PRIVATE

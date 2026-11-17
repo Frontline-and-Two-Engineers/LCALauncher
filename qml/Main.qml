@@ -18,11 +18,11 @@ ApplicationWindow {
     // Fonts are loaded globally in main.cpp via QFontDatabase::addApplicationFont;
     // QML FontLoader duplicates are removed.
 
-    property int currentTabIndex: 0 // 0: Main, 1: Settings, 2: Console, 3: Login
+    property int currentTabIndex: 0 // 0: Main, 1: Info, 2: Settings, 3: Console, 4: Login
 
     Connections {
         target: launcherBridge
-        function onRequestLoginView() { window.currentTabIndex = 3 }
+        function onRequestLoginView() { window.currentTabIndex = 4 }
     }
 
     Connections {
@@ -110,8 +110,9 @@ ApplicationWindow {
                     Repeater {
                         model: [
                             { name: "Главная", icon: "qrc:/qt/qml/LCALauncher/assets/icons/gamepad.svg", index: 0 },
-                            { name: "Настройки", icon: "qrc:/qt/qml/LCALauncher/assets/icons/settings.svg", index: 1 },
-                            { name: "Консоль", icon: "qrc:/qt/qml/LCALauncher/assets/icons/console.svg", index: 2 }
+                            { name: "Информация", icon: "qrc:/qt/qml/LCALauncher/assets/icons/book.svg", index: 1 },
+                            { name: "Настройки", icon: "qrc:/qt/qml/LCALauncher/assets/icons/settings.svg", index: 2 },
+                            { name: "Консоль", icon: "qrc:/qt/qml/LCALauncher/assets/icons/console.svg", index: 3 }
                         ]
 
                         Rectangle {
@@ -218,7 +219,7 @@ ApplicationWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: window.currentTabIndex = 3
+                        onClicked: window.currentTabIndex = 4
                     }
                 }
 
@@ -244,11 +245,152 @@ ApplicationWindow {
                 currentIndex: window.currentTabIndex
 
                 MainView {}
+                InfoView {}
                 SettingsView {}
                 ConsoleView {}
                 LoginView {
                     onBackClicked: window.currentTabIndex = 0
-                    onOpenSettingsRequested: window.currentTabIndex = 1
+                    onOpenSettingsRequested: window.currentTabIndex = 2
+                }
+            }
+        }
+    }
+
+    // ================= Launcher Auto-Update Modal =================
+    Rectangle {
+        id: updateOverlay
+        anchors.fill: parent
+        z: 9000
+        visible: updateBridge.updateAvailable && !updateBridge.dismissed
+        color: "#B3070912"
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(520, parent.width - 64)
+            implicitHeight: updateCol.implicitHeight + 48
+            radius: 16
+            color: "#F2101424"
+            border.color: "#4D00E5FF"
+            border.width: 1
+
+            ColumnLayout {
+                id: updateCol
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 24
+                spacing: 16
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        Text {
+                            text: "Доступно обновление лаунчера"
+                            color: "#FFFFFF"
+                            font.pixelSize: 20
+                            font.bold: true
+                        }
+
+                        Text {
+                            text: "v" + updateBridge.currentVersion + "  ->  v" + updateBridge.latestVersion
+                            color: "#00E5FF"
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(180, Math.max(80, notesText.implicitHeight + 24))
+                    visible: updateBridge.releaseNotes !== ""
+                    radius: 10
+                    color: "#80090C16"
+                    border.color: "#22FFFFFF"
+                    border.width: 1
+                    clip: true
+
+                    Flickable {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        contentWidth: width
+                        contentHeight: notesText.implicitHeight
+                        clip: true
+
+                        Text {
+                            id: notesText
+                            width: parent.width
+                            text: updateBridge.releaseNotes
+                            color: "#C4CDE0"
+                            font.pixelSize: 13
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+
+                LCAProgressBar {
+                    Layout.fillWidth: true
+                    visible: updateBridge.isDownloading || updateBridge.isInstalling
+                    value: updateBridge.isInstalling ? 1.0 : updateBridge.downloadProgress
+                    statusText: updateBridge.statusText
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: updateBridge.errorText !== ""
+                    text: updateBridge.errorText
+                    color: "#FF6B6B"
+                    font.pixelSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    LCAButton {
+                        visible: updateBridge.errorText !== ""
+                        text: "Открыть на GitHub"
+                        Layout.preferredWidth: 160
+                        Layout.preferredHeight: 40
+                        onClicked: updateBridge.openReleasePage()
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    LCAButton {
+                        text: updateBridge.isDownloading ? "Отмена" : "Позже"
+                        enabled: !updateBridge.isInstalling
+                        Layout.preferredWidth: 110
+                        Layout.preferredHeight: 40
+                        onClicked: {
+                            if (updateBridge.isDownloading) {
+                                updateBridge.cancelUpdate()
+                            } else {
+                                updateBridge.dismiss()
+                            }
+                        }
+                    }
+
+                    LCAButton {
+                        text: updateBridge.isInstalling ? "Установка..." : (updateBridge.isDownloading ? "Загрузка..." : "Обновить")
+                        isPrimary: true
+                        textColor: "#0A0D18"
+                        enabled: !updateBridge.isDownloading && !updateBridge.isInstalling
+                        Layout.preferredWidth: 150
+                        Layout.preferredHeight: 40
+                        onClicked: updateBridge.startUpdate()
+                    }
                 }
             }
         }

@@ -12,6 +12,8 @@
 #include "bridge/LauncherBridge.h"
 #include "bridge/ServerStatusBridge.h"
 #include "bridge/ChannelPostsBridge.h"
+#include "bridge/UpdateBridge.h"
+#include "bridge/DocsBridge.h"
 
 int main(int argc, char *argv[]) {
 #ifdef Q_OS_MACOS
@@ -24,7 +26,7 @@ int main(int argc, char *argv[]) {
     app.setOrganizationName("Frontline And Two Engineers");
     app.setOrganizationDomain("frontlineand2engineers.dev");
     app.setApplicationName("LCALauncher");
-    app.setApplicationVersion("1.2.2");
+    app.setApplicationVersion("1.3.0");
     app.setWindowIcon(QIcon(":/qt/qml/LCALauncher/assets/logo.png"));
 
     QQuickStyle::setStyle("Basic");
@@ -60,6 +62,8 @@ int main(int argc, char *argv[]) {
     auto launcherBridge = new LCA::Bridge::LauncherBridge(authService, settingsBridge, &app);
     auto serverStatusBridge = new LCA::Bridge::ServerStatusBridge(settingsBridge, &app);
     auto channelPostsBridge = new LCA::Bridge::ChannelPostsBridge(settingsBridge, &app);
+    auto updateBridge = new LCA::Bridge::UpdateBridge(&app);
+    auto docsBridge = new LCA::Bridge::DocsBridge(&app);
 
     QQmlApplicationEngine engine;
 
@@ -70,6 +74,8 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("launcherBridge", launcherBridge);
     engine.rootContext()->setContextProperty("serverStatusBridge", serverStatusBridge);
     engine.rootContext()->setContextProperty("channelPostsBridge", channelPostsBridge);
+    engine.rootContext()->setContextProperty("updateBridge", updateBridge);
+    engine.rootContext()->setContextProperty("docsBridge", docsBridge);
 
     // Load Main QML from module
     const QUrl url(QStringLiteral("qrc:/qt/qml/LCALauncher/qml/Main.qml"));
