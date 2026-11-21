@@ -41,6 +41,9 @@ private slots:
     void onReplyFinished();
 
 private:
+    void beginAttempt();
+    void handleReadyRead();
+
     QNetworkAccessManager m_network;
     QNetworkReply* m_currentReply{nullptr};
     QFile* m_outputFile{nullptr};
@@ -49,6 +52,10 @@ private:
     QString m_launcherDataDir;
     QString m_tempZipPath;
     bool m_isDownloading{false};
+    qint64 m_resumeOffset{0};
+    qint64 m_totalBytes{0};
+    int m_retryCount{0};
+    bool m_headersChecked{false};
 };
 
 } // namespace LCA::Client

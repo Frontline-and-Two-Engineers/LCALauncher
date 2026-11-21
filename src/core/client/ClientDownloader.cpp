@@ -3,9 +3,11 @@
 #include "core/utils/ArchiveUtils.h"
 #include <QDir>
 #include <QDirIterator>
+#include <QFileInfo>
 #include <QUrl>
 #include <QNetworkRequest>
 #include <QThread>
+#include <QTimer>
 #include <QMetaObject>
 
 namespace LCA::Client {
@@ -85,30 +87,68 @@ void ClientDownloader::startDownload(const QString& downloadUrl, const QString& 
     m_tempZipPath = tempDir + "/client-base.zip";
     Utils::FileUtils::removeFile(m_tempZipPath);
 
-    m_outputFile = new QFile(m_tempZipPath, this);
-    if (!m_outputFile->open(QIODevice::WriteOnly)) {
-        delete m_outputFile;
-        m_outputFile = nullptr;
-        emit downloadFinished(false, "Не удалось создать временный файл: " + m_tempZipPath);
-        return;
-    }
+    m_retryCount = 0;
+    m_totalBytes = 0;
+    m_resumeOffset = 0;
+    m_isDownloading = true;
 
     emit statusChanged("Подключение к серверу для загрузки клиента 1.21.1 NeoForge...");
     emit progressChanged(0.0, 0, 0);
 
+    beginAttempt();
+}
+
+void ClientDownloader::beginAttempt() {
+    if (!m_isDownloading) return;
+
+    const QFileInfo existingInfo(m_tempZipPath);
+    m_resumeOffset = existingInfo.exists() ? existingInfo.size() : 0;
+    m_headersChecked = false;
+
+    m_outputFile = new QFile(m_tempZipPath, this);
+    const QIODevice::OpenMode mode = (m_resumeOffset > 0)
+        ? (QIODevice::ReadWrite | QIODevice::Append)
+        : (QIODevice::WriteOnly | QIODevice::Truncate);
+    if (!m_outputFile->open(mode)) {
+        delete m_outputFile;
+        m_outputFile = nullptr;
+        m_isDownloading = false;
+        emit downloadFinished(false, "Не удалось создать временный файл: " + m_tempZipPath);
+        return;
+    }
+
     QNetworkRequest request{QUrl(m_downloadUrl)};
     request.setRawHeader("User-Agent", "LCALauncher/1.0");
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-    request.setTransferTimeout(120000);
+    request.setTransferTimeout(30000);
+    if (m_retryCount > 0) {
+        request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+        request.setRawHeader("Connection", "close");
+    }
+    if (m_resumeOffset > 0) {
+        request.setRawHeader("Range", QString("bytes=%1-").arg(m_resumeOffset).toUtf8());
+    }
 
     m_currentReply = m_network.get(request);
-    m_isDownloading = true;
-
     connect(m_currentReply, &QNetworkReply::downloadProgress, this, &ClientDownloader::onDownloadProgress);
-    connect(m_currentReply, &QIODevice::readyRead, this, [this]() {
-        if (m_outputFile && m_currentReply) m_outputFile->write(m_currentReply->readAll());
-    });
+    connect(m_currentReply, &QIODevice::readyRead, this, &ClientDownloader::handleReadyRead);
     connect(m_currentReply, &QNetworkReply::finished, this, &ClientDownloader::onReplyFinished);
+}
+
+void ClientDownloader::handleReadyRead() {
+    if (!m_outputFile || !m_currentReply) return;
+
+    if (!m_headersChecked) {
+        m_headersChecked = true;
+        const int httpCode = m_currentReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (m_resumeOffset > 0 && httpCode != 206) {
+            m_resumeOffset = 0;
+            m_outputFile->resize(0);
+            m_outputFile->seek(0);
+        }
+    }
+
+    m_outputFile->write(m_currentReply->readAll());
 }
 
 void ClientDownloader::cancel() {
@@ -128,17 +168,23 @@ void ClientDownloader::cancel() {
 }
 
 void ClientDownloader::onDownloadProgress(qint64 received, qint64 total) {
-    if (total > 0) {
-        double percent = static_cast<double>(received) / static_cast<double>(total);
-        double mbReceived = static_cast<double>(received) / (1024.0 * 1024.0);
-        double mbTotal = static_cast<double>(total) / (1024.0 * 1024.0);
+    const qint64 effectiveReceived = m_resumeOffset + received;
+    const qint64 effectiveTotal = (total > 0) ? (m_resumeOffset + total) : m_totalBytes;
+    if (effectiveTotal > m_totalBytes) {
+        m_totalBytes = effectiveTotal;
+    }
+
+    if (effectiveTotal > 0) {
+        double percent = qBound(0.0, static_cast<double>(effectiveReceived) / static_cast<double>(effectiveTotal), 1.0);
+        double mbReceived = static_cast<double>(effectiveReceived) / (1024.0 * 1024.0);
+        double mbTotal = static_cast<double>(effectiveTotal) / (1024.0 * 1024.0);
         emit statusChanged(QString("Загрузка клиента Minecraft 1.21.1 NeoForge: %1 МБ из %2 МБ (%3%)")
                                .arg(mbReceived, 0, 'f', 1)
                                .arg(mbTotal, 0, 'f', 1)
                                .arg(static_cast<int>(percent * 100)));
-        emit progressChanged(percent, received, total);
+        emit progressChanged(percent, effectiveReceived, effectiveTotal);
     } else {
-        double mbReceived = static_cast<double>(received) / (1024.0 * 1024.0);
+        double mbReceived = static_cast<double>(effectiveReceived) / (1024.0 * 1024.0);
         emit statusChanged(QString("Загрузка клиента Minecraft 1.21.1 NeoForge: %1 МБ...")
                                .arg(mbReceived, 0, 'f', 1));
     }
@@ -147,7 +193,6 @@ void ClientDownloader::onDownloadProgress(qint64 received, qint64 total) {
 void ClientDownloader::onReplyFinished() {
     if (!m_isDownloading || !m_currentReply) return;
 
-    m_isDownloading = false;
     QNetworkReply::NetworkError error = m_currentReply->error();
     QString errorStr = m_currentReply->errorString();
     int httpCode = m_currentReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -162,8 +207,22 @@ void ClientDownloader::onReplyFinished() {
         m_outputFile = nullptr;
     }
 
+    const bool canRetry = (error != QNetworkReply::NoError && httpCode != 404 && httpCode != 403 && httpCode != 401);
+    if (canRetry && m_retryCount < 5) {
+        m_retryCount++;
+        m_network.clearConnectionCache();
+        emit statusChanged(QString("Задержка ответа сервера, повторная попытка %1/5...").arg(m_retryCount));
+        QTimer::singleShot(1500, this, &ClientDownloader::beginAttempt);
+        return;
+    }
+
+    m_isDownloading = false;
+
     if (error != QNetworkReply::NoError || (httpCode >= 400 && httpCode < 600)) {
         Utils::FileUtils::removeFile(m_tempZipPath);
+        if (error == QNetworkReply::OperationCanceledError) {
+            errorStr = "Таймаут ожидания данных от сервера";
+        }
         QString msg = (httpCode == 404)
                           ? QString("Файл базового клиента не найден (404) по адресу:\n%1").arg(m_downloadUrl)
                           : QString("Ошибка загрузки базового клиента: %1 (HTTP %2)").arg(errorStr).arg(httpCode);
