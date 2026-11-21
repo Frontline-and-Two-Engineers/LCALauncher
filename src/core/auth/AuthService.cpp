@@ -149,7 +149,8 @@ void AuthService::requestCodeReplyFinished(QNetworkReply* reply) {
     emit codeReceived(m_currentCode, m_remainingSeconds);
 
     m_countdownTimer->start(1000);
-    m_pollTimer->start(2000);
+    m_pollTimer->start(2500);
+    pollCodeStatus();
 }
 
 void AuthService::onTimerTick() {
@@ -165,21 +166,34 @@ void AuthService::onTimerTick() {
 }
 
 void AuthService::pollCodeStatus() {
-    if (!m_isPolling || m_currentCode.isEmpty()) return;
+    if (!m_isPolling || m_currentCode.isEmpty() || m_activePollReply) return;
 
     QUrl pollUrl(QString("%1/api/auth/poll/%2").arg(m_baseUrl, m_currentCode));
     QNetworkRequest request(pollUrl);
     request.setRawHeader("User-Agent", "LCALauncher/1.0");
-    request.setTransferTimeout(8000);
+    request.setTransferTimeout(10000);
+    if (m_pollErrorCount > 0) {
+        // After a socket/HTTP2 stall, force HTTP/1.1 + fresh connection
+        request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+        request.setRawHeader("Connection", "close");
+    }
 
     QNetworkReply* reply = m_network.get(request);
+    m_activePollReply = reply;
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         pollReplyFinished(reply);
     });
 }
 
 void AuthService::pollReplyFinished(QNetworkReply* reply) {
+    if (m_activePollReply == reply) {
+        m_activePollReply = nullptr;
+    }
     reply->deleteLater();
+
+    if (!m_isPolling) {
+        return;
+    }
 
     if (reply->error() != QNetworkReply::NoError) {
         int httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -188,9 +202,16 @@ void AuthService::pollReplyFinished(QNetworkReply* reply) {
             emit loginFailed("Код авторизации не найден или истёк");
             return;
         }
-        if (++m_pollErrorCount >= 5) {
+        qWarning() << "[AuthService] Poll failed (" << (m_pollErrorCount + 1) << "/12):"
+                   << "http=" << httpCode << "err=" << reply->error() << reply->errorString();
+        m_network.clearConnectionCache();
+
+        if (++m_pollErrorCount >= 12) {
+            const QString reason = httpCode > 0
+                ? QString("HTTP %1").arg(httpCode)
+                : reply->errorString();
             cancelCodePolling();
-            emit loginFailed("Не удалось связаться с сервером авторизации после 5 попыток");
+            emit loginFailed(QString("Не удалось связаться с сервером авторизации (%1)").arg(reason));
         }
         return;
     }
@@ -229,6 +250,11 @@ void AuthService::cancelCodePolling() {
     m_isPolling = false;
     m_pollTimer->stop();
     m_countdownTimer->stop();
+    if (m_activePollReply) {
+        QNetworkReply* active = m_activePollReply;
+        m_activePollReply = nullptr;
+        active->abort();
+    }
     m_remainingSeconds = 0;
     m_pollErrorCount = 0;
 }

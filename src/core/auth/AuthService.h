@@ -70,6 +70,7 @@ private:
     int m_remainingSeconds{0};
     QTimer* m_pollTimer{nullptr};
     QTimer* m_countdownTimer{nullptr};
+    QNetworkReply* m_activePollReply{nullptr};
     bool m_isPolling{false};
     int m_pollErrorCount{0}; // consecutive network errors during polling
 };

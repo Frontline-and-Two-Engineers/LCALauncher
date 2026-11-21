@@ -57,8 +57,10 @@ AuthBridge::AuthBridge(Auth::AuthService* authService, QObject* parent)
 
     connect(m_authService, &Auth::AuthService::loginFailed, this, [this](const QString& err) {
         m_isBusy = false;
+        m_isPolling = false;
         m_errorMessage = err;
         emit busyChanged();
+        emit pollingChanged();
         emit errorOccurred(err);
     });
 
