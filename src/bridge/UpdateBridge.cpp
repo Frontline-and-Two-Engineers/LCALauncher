@@ -61,8 +61,19 @@ bool assetMatchesCurrentPlatform(const QString& name) {
     return name.compare("LCALauncher-Windows-x64.zip", Qt::CaseInsensitive) == 0 ||
            (name.contains("Windows", Qt::CaseInsensitive) && name.endsWith(".zip", Qt::CaseInsensitive));
 #elif defined(Q_OS_MACOS)
+#if defined(Q_PROCESSOR_X86_64)
+    return name.compare("LCALauncher-macOS-x86_64.dmg", Qt::CaseInsensitive) == 0 ||
+           (name.contains("macOS", Qt::CaseInsensitive) &&
+            (name.contains("x86_64", Qt::CaseInsensitive) || name.contains("intel", Qt::CaseInsensitive)) &&
+            name.endsWith(".dmg", Qt::CaseInsensitive));
+#else
     return name.compare("LCALauncher-macOS.dmg", Qt::CaseInsensitive) == 0 ||
-           name.endsWith(".dmg", Qt::CaseInsensitive);
+           name.compare("LCALauncher-macOS-arm64.dmg", Qt::CaseInsensitive) == 0 ||
+           (name.contains("macOS", Qt::CaseInsensitive) &&
+            !name.contains("x86_64", Qt::CaseInsensitive) &&
+            !name.contains("intel", Qt::CaseInsensitive) &&
+            name.endsWith(".dmg", Qt::CaseInsensitive));
+#endif
 #else
     return name.compare("LCALauncher-Linux-x86_64.tar.gz", Qt::CaseInsensitive) == 0 ||
            (name.contains("Linux", Qt::CaseInsensitive) && name.endsWith(".tar.gz", Qt::CaseInsensitive));
